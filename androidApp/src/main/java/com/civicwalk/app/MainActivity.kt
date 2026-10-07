@@ -35,6 +35,21 @@ import com.google.ai.edge.litertlm.EngineConfig
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.google.android.material.tabs.TabLayout
+import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.maps.MapView
+import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.Style
+import org.maplibre.android.style.layers.CircleLayer
+import org.maplibre.android.style.layers.FillLayer
+import org.maplibre.android.style.layers.LineLayer
+import org.maplibre.android.style.layers.PropertyFactory
+import org.maplibre.android.style.sources.GeoJsonSource
+import org.maplibre.geojson.Feature
+import org.maplibre.geojson.FeatureCollection
+import org.maplibre.geojson.LineString
+import org.maplibre.geojson.Point
+import org.maplibre.geojson.Polygon
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -82,6 +97,15 @@ class MainActivity : AppCompatActivity() {
 
     // map tab
     private lateinit var fogMap: FogMapView
+    private lateinit var mapView: MapView
+    private lateinit var btnMapReal: MaterialButton
+    private lateinit var btnMapGrid: MaterialButton
+    private var mapReady = false
+    private var mapInit = false
+    private var mapCentered = false
+    // MapView.getMapLibreMap() is package-private, so the map handle comes from getMapAsync once.
+    private var mapRef: MapLibreMap? = null
+    private var mapMode = "real"
     private lateinit var kpiCells: TextView
     private lateinit var kpiKm: TextView
     private lateinit var tvRoute: TextView
@@ -121,6 +145,16 @@ class MainActivity : AppCompatActivity() {
     @Volatile private var dlStop = false
     private var dlThread: Thread? = null
 
+    // model loading (progress, cancel, backend choice)
+    private lateinit var radioBackend: RadioGroup
+    private lateinit var loadProgress: LinearProgressIndicator
+    private lateinit var btnLoadCancel: MaterialButton
+    private lateinit var tvLoadInfo: TextView
+    @Volatile private var loadCancelled = false
+    @Volatile private var loadPhase = ""
+    private var loadThread: Thread? = null
+    private val prefs by lazy { getSharedPreferences("civicwalk", MODE_PRIVATE) }
+
     private val main = Handler(Looper.getMainLooper())
     private val scope = CoroutineScope(Dispatchers.Main)
 
@@ -136,10 +170,14 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         bindViews()
+        mapView.onCreate(savedInstanceState)
         loadState()
         wireTabs()
         wireReport()
         wireSettings()
+
+        mapMode = prefs.getString("mapmode", "real") ?: "real"
+        setMapMode(mapMode)
 
         requestPermissions(
             arrayOf(
@@ -171,6 +209,9 @@ class MainActivity : AppCompatActivity() {
         etSupp = findViewById(R.id.etSupp)
 
         fogMap = findViewById(R.id.fogMap)
+        mapView = findViewById(R.id.mapView)
+        btnMapReal = findViewById(R.id.btnMapReal)
+        btnMapGrid = findViewById(R.id.btnMapGrid)
         kpiCells = findViewById(R.id.kpiCells)
         kpiKm = findViewById(R.id.kpiKm)
         tvRoute = findViewById(R.id.tvRoute)
@@ -189,6 +230,10 @@ class MainActivity : AppCompatActivity() {
         btnModelDelete = findViewById(R.id.btnModelDelete)
         tvEngine = findViewById(R.id.tvEngine)
         tvVersion = findViewById(R.id.tvVersion)
+        radioBackend = findViewById(R.id.radioBackend)
+        loadProgress = findViewById(R.id.loadProgress)
+        btnLoadCancel = findViewById(R.id.btnLoadCancel)
+        tvLoadInfo = findViewById(R.id.tvLoadInfo)
     }
 
     private fun wireTabs() {
@@ -210,7 +255,13 @@ class MainActivity : AppCompatActivity() {
         panels.forEachIndexed { i, id ->
             findViewById<View>(id).visibility = if (i == index) View.VISIBLE else View.GONE
         }
-        if (index == 1) renderFog()
+        if (index == 1) {
+            // The map is created lazily: MapLibre must not build its GL surface while the panel
+            // is GONE with zero size.
+            if (!mapInit) { mapInit = true; initMap() }
+            renderFog()
+            pushMapData()
+        }
     }
 
     private fun wireReport() {
@@ -222,6 +273,8 @@ class MainActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.btnSave).setOnClickListener { saveRecord() }
         findViewById<MaterialButton>(R.id.btnClearRecords).setOnClickListener { confirmClearRecords() }
         btnRoute.setOnClickListener { toggleRoute() }
+        btnMapReal.setOnClickListener { setMapMode("real") }
+        btnMapGrid.setOnClickListener { setMapMode("grid") }
 
         btnAnalyse.setOnClickListener { analyse() }
 
@@ -266,6 +319,26 @@ class MainActivity : AppCompatActivity() {
 
         btnModelDownload.setOnClickListener { startDownload() }
         btnModelPause.setOnClickListener { dlStop = true; btnModelPause.visibility = View.GONE }
+        btnLoadCancel.setOnClickListener {
+            loadCancelled = true
+            toast(getString(R.string.st_cancelled))
+        }
+
+        radioBackend.check(
+            when (backendChoice()) {
+                "gpu" -> R.id.rbGpuOnly
+                "auto" -> R.id.rbAuto
+                else -> R.id.rbCpu
+            }
+        )
+        radioBackend.setOnCheckedChangeListener { _, id ->
+            val v = when (id) {
+                R.id.rbGpuOnly -> "gpu"
+                R.id.rbAuto -> "auto"
+                else -> "cpu"
+            }
+            prefs.edit().putString("backend", v).apply()
+        }
         tvEngine.setOnClickListener { renderEngine() }
         findViewById<MaterialButton>(R.id.btnModelLoad).setOnClickListener { loadModel() }
         btnModelDelete.setOnClickListener { confirmDeleteModel() }
@@ -310,7 +383,8 @@ class MainActivity : AppCompatActivity() {
         val e = sharedEngine
         tvEngine.text = getString(
             R.string.engine_state,
-            if (e == null) getString(R.string.engine_off) else getString(R.string.engine_on, "LiteRT-LM")
+            if (e == null) getString(R.string.engine_off)
+            else getString(R.string.engine_on, sharedBackend.ifEmpty { "LiteRT-LM" })
         )
     }
 
@@ -319,8 +393,14 @@ class MainActivity : AppCompatActivity() {
         val target = modelTarget()
         if (target.isFile && target.length() > 1_000_000_000L) { refreshModelManager(); return }
 
-        val partial = modelPartial()
-        val already = if (partial.isFile) partial.length() else 0L
+        var partial = modelPartial()
+        val already = if (partial.isFile) partial.length()
+        else (modelTarget().takeIf { it.isFile && it.length() < modelTotal }?.length() ?: 0L)
+        if (already > 0 && !partial.isFile) {
+            // A download left over from an older version (partial file under the final name):
+            // move it aside so the resume continues instead of throwing 2.59 GB away.
+            modelTarget().renameTo(partial)
+        }
         dlStop = false
         dlProgress.visibility = View.VISIBLE
         btnModelPause.visibility = View.VISIBLE
@@ -390,40 +470,111 @@ class MainActivity : AppCompatActivity() {
         tvDlText.text = getString(R.string.dl_progress, mb(done), mb(modelTotal), pct)
     }
 
+    /** Backend preference: "cpu" (default, always works), "auto" (GPU then CPU), "gpu". */
+    private fun backendChoice(): String = prefs.getString("backend", "cpu") ?: "cpu"
+
     private fun loadModel() {
+        if (sharedEngine != null) { toast(getString(R.string.st_backend_ok, sharedBackend.ifEmpty { "?" })); return }
         val f = findModel() ?: run { toast(getString(R.string.model_missing)); return }
-        if (sharedEngine != null) { toast(getString(R.string.st_loaded_gpu)); return }
+        if (loadThread?.isAlive == true) return
+
+        loadCancelled = false
+        // CPU first is deliberate: on most Android devices the GPU backend initialises happily and
+        // then dies at inference time with "Can not find OpenCL library on this device", which is
+        // exactly what the smoke test exists to catch.
+        val order: List<Boolean> = when (backendChoice()) {
+            "gpu" -> listOf(true)
+            "auto" -> listOf(true, false)
+            else -> listOf(false)
+        }
+
+        val started = System.currentTimeMillis()
+        loadProgress.visibility = View.VISIBLE
+        btnLoadCancel.visibility = View.VISIBLE
+        tvLoadInfo.visibility = View.VISIBLE
         tvStatus.text = getString(R.string.st_loading)
-        Thread {
-            var loaded: Engine? = null
-            var how = "CPU"
-            try {
-                val cfg = EngineConfig(modelPath = f.absolutePath, backend = Backend.GPU(), cacheDir = cacheDir.path)
-                loaded = Engine(cfg).also { it.initialize() }
-                how = "GPU"
-            } catch (t: Throwable) {
+
+        val tick = object : Runnable {
+            override fun run() {
+                val s = ((System.currentTimeMillis() - started) / 1000).toInt()
+                tvLoadInfo.text = loadPhase + " · " + getString(R.string.st_load_elapsed, s)
+                if (loadThread?.isAlive == true) main.postDelayed(this, 1000)
+            }
+        }
+        main.post(tick)
+
+        loadThread = Thread {
+            var ok = false
+            var how = ""
+            var lastError = ""
+            for (useGpu in order) {
+                if (loadCancelled) break
+                loadPhase = getString(if (useGpu) R.string.st_load_gpu else R.string.st_load_cpu)
+                val backend = if (useGpu) Backend.GPU() else Backend.CPU()
+                var e: Engine? = null
                 try {
-                    val cfg = EngineConfig(modelPath = f.absolutePath, backend = Backend.CPU(), cacheDir = cacheDir.path)
-                    loaded = Engine(cfg).also { it.initialize() }
-                    how = "CPU"
-                } catch (t2: Throwable) {
-                    val msg = t2.message ?: "unknown"
-                    main.post { tvStatus.text = getString(R.string.st_load_failed, msg) }
-                }
-            }
-            val e = loaded
-            if (e != null) {
-                sharedEngine = e
-                val backend = how
-                main.post {
-                    tvStatus.text = getString(
-                        if (backend == "GPU") R.string.st_loaded_gpu else R.string.st_loaded_cpu
+                    val cfg = EngineConfig(
+                        modelPath = f.absolutePath,
+                        backend = backend,
+                        visionBackend = backend,
+                        audioBackend = backend,
+                        cacheDir = cacheDir.path
                     )
-                    renderEngine()
+                    e = Engine(cfg)
+                    e.initialize()
+                    if (loadCancelled) { try { e.close() } catch (_: Throwable) {}; break }
+                    loadPhase = getString(R.string.st_verify)
+                    if (smokeTest(e)) {
+                        sharedEngine = e
+                        sharedBackend = if (useGpu) "GPU" else "CPU"
+                        ok = true
+                        how = sharedBackend
+                        e = null                       // keep it open
+                        break
+                    }
+                    lastError = "the model initialised but could not generate a reply"
+                } catch (t: Throwable) {
+                    lastError = t.message ?: "unknown"
+                    if (lastError.contains("OpenCL", ignoreCase = true)) {
+                        lastError = "Can not find OpenCL library on this device"
+                    }
+                } finally {
+                    e?.let { try { it.close() } catch (_: Throwable) {} }
                 }
             }
-        }.start()
+
+            main.post {
+                loadProgress.visibility = View.GONE
+                btnLoadCancel.visibility = View.GONE
+                tvLoadInfo.visibility = View.GONE
+                when {
+                    loadCancelled -> {
+                        tvStatus.text = getString(R.string.st_cancelled)
+                    }
+                    ok -> {
+                        tvStatus.text = getString(
+                            if (how == "GPU") R.string.st_loaded_gpu else R.string.st_loaded_cpu
+                        )
+                        renderEngine()
+                    }
+                    else -> tvStatus.text =
+                        getString(R.string.st_load_failed, lastError.ifEmpty { "unknown" })
+                }
+            }
+        }.also { it.start() }
     }
+
+    /**
+     * One tiny synchronous generation. A backend that initialises but cannot actually infer must
+     * fail here rather than at the user's first real photo.
+     */
+    private fun smokeTest(e: Engine): Boolean = try {
+        e.createConversation().use { c ->
+            c.sendMessage("Say OK").toString()
+            true
+        }
+    } catch (t: Throwable) { false }
+
 
     private fun confirmDeleteModel() {
         val f = findModel() ?: modelPartial().takeIf { it.isFile }
@@ -818,7 +969,132 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderFog() {
         fogMap.update(cells, routePoints, issueMarks())
+        pushMapData()
     }
+
+    // ------------------------------------------------------------- street map (MapLibre)
+
+    /**
+     * Real street map, drawn from the free OpenFreeMap vector tiles (no API key). Explored cells,
+     * the walked line and the reported issues are our own GeoJSON layers on top. The tiles are the
+     * only thing that needs the network; the offline grid mode shows the same data with no network
+     * at all, which is what the app falls back to.
+     */
+    private fun initMap() {
+        try {
+            mapView.getMapAsync { map ->
+                mapRef = map
+                try {
+                    map.setStyle(Style.Builder().fromUri(MAP_STYLE)) { _ ->
+                        mapReady = true
+                        buildMapLayers()
+                        pushMapData()
+                    }
+                } catch (t: Throwable) { fallbackToGrid() }
+            }
+            main.postDelayed({
+                if (!mapReady && mapMode == "real") fallbackToGrid()
+            }, 15_000)
+        } catch (t: Throwable) { fallbackToGrid() }
+    }
+
+    private fun fallbackToGrid() {
+        if (mapMode != "real") return
+        toast(getString(R.string.map_style_failed))
+        setMapMode("grid")
+    }
+
+    private fun buildMapLayers() {
+        val style = mapRef?.style ?: return
+        try {
+            style.addSource(GeoJsonSource("cells"))
+            style.addLayer(
+                FillLayer("cells-fill", "cells").withProperties(
+                    PropertyFactory.fillColor(android.graphics.Color.parseColor("#2F7D52")),
+                    PropertyFactory.fillOpacity(0.25f)
+                )
+            )
+            style.addSource(GeoJsonSource("route"))
+            style.addLayer(
+                LineLayer("route-line", "route").withProperties(
+                    PropertyFactory.lineColor(android.graphics.Color.parseColor("#2F7D52")),
+                    PropertyFactory.lineWidth(4f)
+                )
+            )
+            style.addSource(GeoJsonSource("issues"))
+            style.addLayer(
+                CircleLayer("issues-dot", "issues").withProperties(
+                    PropertyFactory.circleColor(android.graphics.Color.parseColor("#D9534F")),
+                    PropertyFactory.circleRadius(7f),
+                    PropertyFactory.circleStrokeColor(android.graphics.Color.WHITE),
+                    PropertyFactory.circleStrokeWidth(2f)
+                )
+            )
+        } catch (t: Throwable) { /* style not ready; pushMapData will retry */ }
+    }
+
+    private fun pushMapData() {
+        if (!mapReady || mapMode != "real") return
+        val map = mapRef ?: return
+        val style = map.style ?: return
+        try {
+            val half = 0.0004 / 2
+            val cellFeatures = cells.mapNotNull { k ->
+                val la = cellKeyLat(k); val lo = cellKeyLon(k)
+                Feature.fromGeometry(
+                    Polygon.fromLngLats(
+                        listOf(
+                            listOf(
+                                Point.fromLngLat(lo - half, la - half),
+                                Point.fromLngLat(lo + half, la - half),
+                                Point.fromLngLat(lo + half, la + half),
+                                Point.fromLngLat(lo - half, la + half),
+                                Point.fromLngLat(lo - half, la - half)
+                            )
+                        )
+                    )
+                )
+            }.toTypedArray()
+            val routeFeature = if (routePoints.size > 1) arrayOf(
+                Feature.fromGeometry(
+                    LineString.fromLngLats(routePoints.map { Point.fromLngLat(it[1], it[0]) })
+                )
+            ) else emptyArray()
+            val issueFeatures = issueMarks().map { m ->
+                Feature.fromGeometry(Point.fromLngLat(m.second, m.first))
+            }.toTypedArray()
+
+            style.getSourceAs<GeoJsonSource>("cells")?.setGeoJson(FeatureCollection.fromFeatures(cellFeatures))
+            style.getSourceAs<GeoJsonSource>("route")?.setGeoJson(FeatureCollection.fromFeatures(routeFeature))
+            style.getSourceAs<GeoJsonSource>("issues")?.setGeoJson(FeatureCollection.fromFeatures(issueFeatures))
+
+            if (!mapCentered) {
+                val p = currentPoint()
+                val first = cells.firstOrNull()
+                val target = when {
+                    p != null -> LatLng(p[0], p[1])
+                    first != null -> LatLng(cellKeyLat(first), cellKeyLon(first))
+                    else -> null
+                }
+                if (target != null) {
+                    map.cameraPosition = CameraPosition.Builder().target(target).zoom(16.0).build()
+                    mapCentered = true
+                }
+            }
+        } catch (t: Throwable) { /* layer missing on the very first call */ }
+    }
+
+    private fun setMapMode(mode: String) {
+        mapMode = mode
+        prefs.edit().putString("mapmode", mode).apply()
+        val real = mode == "real"
+        if (::mapView.isInitialized) mapView.visibility = if (real) View.VISIBLE else View.GONE
+        fogMap.visibility = if (real) View.GONE else View.VISIBLE
+        if (real) pushMapData() else renderFog()
+    }
+
+    private fun cellKeyLat(k: String) = k.substringBefore(":").toInt() * 0.0004
+    private fun cellKeyLon(k: String) = k.substringAfter(":").toInt() * 0.0004
 
     private fun cellKey(lat: Double, lon: Double): String =
         "${Math.round(lat / 0.0004)}:${Math.round(lon / 0.0004)}"
@@ -840,11 +1116,42 @@ class MainActivity : AppCompatActivity() {
 
     private fun toast(m: String) = Toast.makeText(this, m, Toast.LENGTH_SHORT).show()
 
+    override fun onStart() {
+        super.onStart()
+        if (::mapView.isInitialized) mapView.onStart()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::mapView.isInitialized) mapView.onResume()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (::mapView.isInitialized) mapView.onPause()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (::mapView.isInitialized) mapView.onStop()
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        if (::mapView.isInitialized) mapView.onLowMemory()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        if (::mapView.isInitialized) mapView.onSaveInstanceState(outState)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         // The engine is intentionally process-scoped (see companion): a language change recreates
         // the activity, and re-loading a 2.59 GB model every time would be unacceptable.
         dlStop = true
+        if (::mapView.isInitialized) mapView.onDestroy()
     }
 
     companion object {
@@ -853,5 +1160,9 @@ class MainActivity : AppCompatActivity() {
          * throw away a loaded 2.59 GB model. The OS reclaims it with the process.
          */
         @Volatile private var sharedEngine: Engine? = null
+        @Volatile private var sharedBackend: String = ""
+
+        /** Free vector tiles, no API key — the same style the HTML prototype used. */
+        private const val MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty"
     }
 }

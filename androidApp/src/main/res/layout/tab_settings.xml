@@ -99,6 +99,61 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
 
+            <TextView
+                style="@style/SectionTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/c_backend" />
+
+            <RadioGroup
+                android:id="@+id/radioBackend"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/rbCpu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/rb_cpu" />
+
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/rbAuto"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/rb_auto" />
+
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/rbGpuOnly"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/rb_gpu" />
+            </RadioGroup>
+
+            <TextView
+                style="@style/Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/backend_note" />
+
+            <com.google.android.material.progressindicator.LinearProgressIndicator
+                android:id="@+id/loadProgress"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:indeterminate="true"
+                android:visibility="gone"
+                app:indicatorColor="@color/amber"
+                app:trackColor="@color/line" />
+
+            <TextView
+                android:id="@+id/tvLoadInfo"
+                style="@style/Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
+
             <com.google.android.material.progressindicator.LinearProgressIndicator
                 android:id="@+id/dlProgress"
                 android:layout_width="match_parent"
@@ -151,6 +206,14 @@
                     android:layout_marginEnd="8dp"
                     android:layout_weight="1"
                     android:text="@string/btn_load" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnLoadCancel"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/btn_cancel_load"
+                    android:visibility="gone" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnModelDelete"

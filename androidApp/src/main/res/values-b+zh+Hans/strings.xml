@@ -32,6 +32,11 @@
     <string name="bytes_fmt">UTF-8 字节：%1$d / 1500</string>
 
     <string name="c_map">探索地图</string>
+    <string name="map_real">街道图</string>
+    <string name="map_grid">离线示意图</string>
+    <string name="map_offline_note">街道图需要上网（看的时候才下载图块）。离线示意图永远可用，显示同一批格子。你走过的资料不会上传。</string>
+    <string name="map_style_failed">载入街道图失败 —— 已改用离线示意图。</string>
+    <string name="map_need_recording">地图现在空白是正常的 —— 你还没开始记录。去地图分页按「开始记录」再走，每经过一格（约 44 米）雾就会散开。</string>
     <string name="kpi_cells">格数</string>
     <string name="kpi_km">公里</string>
     <string name="btn_route_start">开始记录</string>
@@ -71,6 +76,19 @@
     <string name="engine_state">引擎：%1$s</string>
     <string name="engine_off">未载入</string>
     <string name="engine_on">已载入（%1$s）</string>
+
+    <string name="c_backend">运算后端</string>
+    <string name="rb_auto">自动 —— 先试 GPU，失败转 CPU</string>
+    <string name="rb_gpu">只用 GPU</string>
+    <string name="rb_cpu">只用 CPU（建议）</string>
+    <string name="backend_note">大部分手机不会向 app 开放 OpenCL，所以 GPU 后端会报「Can not find OpenCL library on this device」。CPU 一定行得通，也是默认值。</string>
+    <string name="btn_cancel_load">取消载入</string>
+    <string name="st_load_elapsed">载入中 … %1$d 秒</string>
+    <string name="st_load_gpu">尝试 GPU 后端 …</string>
+    <string name="st_load_cpu">尝试 CPU 后端 …</string>
+    <string name="st_verify">测试模型真的可以生成文字 …</string>
+    <string name="st_cancelled">已取消载入。</string>
+    <string name="st_backend_ok">已载入（%1$s）。</string>
 
     <string name="c_privacy">隐私</string>
     <string name="privacy_body">相片、坐标、草稿和你走过的格子，全部只存在 app 自己的文件夹。唯一使用网络的地方就是一次性下载模型。</string>

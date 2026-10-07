@@ -11,8 +11,8 @@ android {
         applicationId = "com.civicwalk.app"
         minSdk = 26          // LiteRT-LM requires Android 8.0+
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
         // The prototype target is one modern phone (Snapdragon 8 Gen 2, arm64).
         // Every extra ABI adds ~10 MB of LiteRT native libraries to the APK.
         ndk {
@@ -53,4 +53,6 @@ dependencies {
     // AppCompat is what makes the in-app language switch (per-app locales) work.
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
+    // Street map for the exploration tab: free OpenFreeMap vector tiles, no API key.
+    implementation("org.maplibre.gl:android-sdk:11.11.0")
 }

@@ -35,6 +35,11 @@
 
     <!-- Map tab -->
     <string name="c_map">Exploration map</string>
+    <string name="map_real">Street map</string>
+    <string name="map_grid">Offline grid</string>
+    <string name="map_offline_note">The street map needs a connection — tiles are fetched as you look at them. The offline grid always works and reveals exactly the same cells. Nothing about your walk is ever uploaded.</string>
+    <string name="map_style_failed">Could not load the street map — showing the offline grid instead.</string>
+    <string name="map_need_recording">Nothing on the map yet — that is normal. Go to the map tab and press “Start recording”, then walk: each ~44 m cell you pass through lifts out of the fog.</string>
     <string name="kpi_cells">Cells</string>
     <string name="kpi_km">Kilometres</string>
     <string name="btn_route_start">Start recording</string>
@@ -76,6 +81,19 @@
     <string name="engine_state">Engine: %1$s</string>
     <string name="engine_off">not loaded</string>
     <string name="engine_on">loaded (%1$s)</string>
+
+    <string name="c_backend">Compute backend</string>
+    <string name="rb_auto">Auto — try GPU, fall back to CPU</string>
+    <string name="rb_gpu">GPU only</string>
+    <string name="rb_cpu">CPU only (recommended)</string>
+    <string name="backend_note">Most phones do not expose OpenCL to apps, so the GPU backend fails with “Can not find OpenCL library on this device”. CPU always works and is the default.</string>
+    <string name="btn_cancel_load">Cancel load</string>
+    <string name="st_load_elapsed">Loading … %1$d s</string>
+    <string name="st_load_gpu">Trying the GPU backend …</string>
+    <string name="st_load_cpu">Trying the CPU backend …</string>
+    <string name="st_verify">Verifying that the model can actually generate …</string>
+    <string name="st_cancelled">Load cancelled.</string>
+    <string name="st_backend_ok">Loaded on %1$s.</string>
 
     <string name="c_privacy">Privacy</string>
     <string name="privacy_body">The photo, the coordinates, the draft and your walked grid stay in this app\'s own folder. The only network use is the one-time model download.</string>
