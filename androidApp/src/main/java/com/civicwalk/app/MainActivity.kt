@@ -18,6 +18,7 @@ import android.provider.MediaStore
 import android.view.MotionEvent
 import android.view.View
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.RadioGroup
 import android.widget.TextView
@@ -97,11 +98,14 @@ class MainActivity : AppCompatActivity() {
 
     // map tab
     private lateinit var fogMap: FogMapView
-    private lateinit var mapView: MapView
+    private lateinit var mapContainer: FrameLayout
+    private var mapView: MapView? = null
+    private var mapCreated = false
     private lateinit var btnMapReal: MaterialButton
     private lateinit var btnMapGrid: MaterialButton
     private var mapReady = false
     private var mapInit = false
+    private var currentTab = 0
     private var mapCentered = false
     // MapView.getMapLibreMap() is package-private, so the map handle comes from getMapAsync once.
     private var mapRef: MapLibreMap? = null
@@ -126,6 +130,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnModelDelete: MaterialButton
     private lateinit var tvEngine: TextView
     private lateinit var tvVersion: TextView
+    private lateinit var tvCrash: TextView
 
     private var photoFile: File? = null
     private var archiveFile: File? = null
@@ -170,7 +175,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         bindViews()
-        mapView.onCreate(savedInstanceState)
         loadState()
         wireTabs()
         wireReport()
@@ -178,6 +182,7 @@ class MainActivity : AppCompatActivity() {
 
         mapMode = prefs.getString("mapmode", "real") ?: "real"
         setMapMode(mapMode)
+        renderCrash()
 
         requestPermissions(
             arrayOf(
@@ -209,7 +214,7 @@ class MainActivity : AppCompatActivity() {
         etSupp = findViewById(R.id.etSupp)
 
         fogMap = findViewById(R.id.fogMap)
-        mapView = findViewById(R.id.mapView)
+        mapContainer = findViewById(R.id.mapContainer)
         btnMapReal = findViewById(R.id.btnMapReal)
         btnMapGrid = findViewById(R.id.btnMapGrid)
         kpiCells = findViewById(R.id.kpiCells)
@@ -230,6 +235,7 @@ class MainActivity : AppCompatActivity() {
         btnModelDelete = findViewById(R.id.btnModelDelete)
         tvEngine = findViewById(R.id.tvEngine)
         tvVersion = findViewById(R.id.tvVersion)
+        tvCrash = findViewById(R.id.tvCrash)
         radioBackend = findViewById(R.id.radioBackend)
         loadProgress = findViewById(R.id.loadProgress)
         btnLoadCancel = findViewById(R.id.btnLoadCancel)
@@ -251,14 +257,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showPanel(index: Int) {
+        currentTab = index
         val panels = intArrayOf(R.id.panelReport, R.id.panelMap, R.id.panelRecords, R.id.panelSettings)
         panels.forEachIndexed { i, id ->
             findViewById<View>(id).visibility = if (i == index) View.VISIBLE else View.GONE
         }
         if (index == 1) {
-            // The map is created lazily: MapLibre must not build its GL surface while the panel
-            // is GONE with zero size.
-            if (!mapInit) { mapInit = true; initMap() }
+            if (mapMode == "real") initMap()
             renderFog()
             pushMapData()
         }
@@ -981,8 +986,27 @@ class MainActivity : AppCompatActivity() {
      * at all, which is what the app falls back to.
      */
     private fun initMap() {
+        if (mapCreated) return
         try {
-            mapView.getMapAsync { map ->
+            val mv = MapView(this)
+            mapView = mv
+            mapCreated = true
+            mapContainer.addView(
+                mv,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT
+                )
+            )
+            // One-finger drags still scroll the page; a pinch belongs to the map.
+            mv.setOnTouchListener { v, e ->
+                if (e.pointerCount > 1) v.parent?.requestDisallowInterceptTouchEvent(true)
+                false
+            }
+            mv.onCreate(null)
+            mv.onStart()
+            mv.onResume()
+            mv.getMapAsync { map ->
                 mapRef = map
                 try {
                     map.setStyle(Style.Builder().fromUri(MAP_STYLE)) { _ ->
@@ -995,7 +1019,13 @@ class MainActivity : AppCompatActivity() {
             main.postDelayed({
                 if (!mapReady && mapMode == "real") fallbackToGrid()
             }, 15_000)
-        } catch (t: Throwable) { fallbackToGrid() }
+        } catch (t: Throwable) {
+            // MapLibre refused to start: the app keeps working on the offline grid.
+            mapView = null
+            mapCreated = false
+            toast(getString(R.string.map_unavailable))
+            setMapMode("grid")
+        }
     }
 
     private fun fallbackToGrid() {
@@ -1088,9 +1118,16 @@ class MainActivity : AppCompatActivity() {
         mapMode = mode
         prefs.edit().putString("mapmode", mode).apply()
         val real = mode == "real"
-        if (::mapView.isInitialized) mapView.visibility = if (real) View.VISIBLE else View.GONE
+        mapView?.visibility = if (real) View.VISIBLE else View.GONE
         fogMap.visibility = if (real) View.GONE else View.VISIBLE
-        if (real) pushMapData() else renderFog()
+        if (real) {
+            // Create the map only while its panel is on screen: MapLibre must not build a GL
+            // surface inside a GONE panel with zero size.
+            if (currentTab == 1) initMap()
+            pushMapData()
+        } else {
+            renderFog()
+        }
     }
 
     private fun cellKeyLat(k: String) = k.substringBefore(":").toInt() * 0.0004
@@ -1116,34 +1153,39 @@ class MainActivity : AppCompatActivity() {
 
     private fun toast(m: String) = Toast.makeText(this, m, Toast.LENGTH_SHORT).show()
 
+    private fun renderCrash() {
+        val c = CivicWalkApp.lastCrash(this)
+        tvCrash.text = if (c.isNullOrBlank()) getString(R.string.no_error) else c
+    }
+
     override fun onStart() {
         super.onStart()
-        if (::mapView.isInitialized) mapView.onStart()
+        mapView?.onStart()
     }
 
     override fun onResume() {
         super.onResume()
-        if (::mapView.isInitialized) mapView.onResume()
+        mapView?.onResume()
     }
 
     override fun onPause() {
         super.onPause()
-        if (::mapView.isInitialized) mapView.onPause()
+        mapView?.onPause()
     }
 
     override fun onStop() {
         super.onStop()
-        if (::mapView.isInitialized) mapView.onStop()
+        mapView?.onStop()
     }
 
     override fun onLowMemory() {
         super.onLowMemory()
-        if (::mapView.isInitialized) mapView.onLowMemory()
+        mapView?.onLowMemory()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        if (::mapView.isInitialized) mapView.onSaveInstanceState(outState)
+        mapView?.onSaveInstanceState(outState)
     }
 
     override fun onDestroy() {
@@ -1151,7 +1193,7 @@ class MainActivity : AppCompatActivity() {
         // The engine is intentionally process-scoped (see companion): a language change recreates
         // the activity, and re-loading a 2.59 GB model every time would be unacceptable.
         dlStop = true
-        if (::mapView.isInitialized) mapView.onDestroy()
+        mapView?.onDestroy()
     }
 
     companion object {

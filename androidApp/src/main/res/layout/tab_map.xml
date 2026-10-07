@@ -102,8 +102,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="300dp">
 
-                <org.maplibre.android.maps.MapView
-                    android:id="@+id/mapView"
+                <!-- The MapView is added in code, inside a try/catch: if MapLibre cannot start on
+                     this device the app falls back to the offline grid instead of dying. -->
+                <FrameLayout
+                    android:id="@+id/mapContainer"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent" />
 

@@ -91,6 +91,9 @@
     <string name="st_backend_ok">已載入（%1$s）。</string>
 
     <string name="c_privacy">私隱</string>
+    <string name="c_last_error">上次錯誤（可選取複製）</string>
+    <string name="no_error">暫時冇錯誤紀錄。</string>
+    <string name="map_unavailable">呢部機用唔到街道圖 —— 已改用離線示意圖。</string>
     <string name="privacy_body">相片、座標、草稿同你行過嘅格仔，全部只存喺 app 自己嘅資料夾。唯一用到網絡嘅地方就係一次性下載模型。</string>
 
     <string name="st_loading">模型載入中 …</string>

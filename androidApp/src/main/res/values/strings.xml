@@ -96,6 +96,9 @@
     <string name="st_backend_ok">Loaded on %1$s.</string>
 
     <string name="c_privacy">Privacy</string>
+    <string name="c_last_error">Last error (select and copy)</string>
+    <string name="no_error">No error recorded.</string>
+    <string name="map_unavailable">The street map is not available on this device — showing the offline grid.</string>
     <string name="privacy_body">The photo, the coordinates, the draft and your walked grid stay in this app\'s own folder. The only network use is the one-time model download.</string>
 
     <!-- status + toasts -->
