@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CivicWalk</string>
+    <string name="tag">prototype v0.1 · on-device</string>
+    <string name="sub">Photograph a street problem; the on-device Gemma model drafts the 1823 report. Offline after the one-time model download.</string>
+
+    <string name="sec_model">0. On-device model</string>
+    <string name="model_missing">Model not found. Copy the .litertlm file to the phone, or download it once (2.59 GB).</string>
+    <string name="model_ready">Model ready: %1$s</string>
+    <string name="btn_download">Download model (2.59 GB, one time)</string>
+    <string name="btn_load">Load model</string>
+    <string name="model_hint">Saved to: Android/data/com.civicwalk.app/files/ (adb push works too)</string>
+
+    <string name="sec_photo">1. Photo</string>
+    <string name="btn_camera">Take photo</string>
+    <string name="btn_upload">Upload photo</string>
+    <string name="sec_place">2. Where</string>
+    <string name="btn_gps">Use GPS now</string>
+    <string name="btn_exif">Use photo EXIF</string>
+    <string name="hint_addr">Address (optional)</string>
+    <string name="sec_analyse">3. Analyse on device</string>
+    <string name="btn_analyse">Analyse with Gemma</string>
+    <string name="sec_draft">4. 1823 report</string>
+    <string name="btn_copy">Copy</string>
+    <string name="btn_save">Save record</string>
+    <string name="bytes_fmt">UTF-8 bytes: %1$d / 1500</string>
+
+    <string name="sec_route">5. Exploration route</string>
+    <string name="btn_route_start">Start recording</string>
+    <string name="btn_route_stop">Stop recording</string>
+    <string name="cells_fmt">Cells revealed: %1$d  ·  distance: %2$.2f km</string>
+
+    <string name="sec_records">6. Records</string>
+    <string name="empty">No records yet.</string>
+</resources>

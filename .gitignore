@@ -1,0 +1,27 @@
+# build output
+build/
+*/build/
+.gradle/
+.gradle-cache/
+
+# local machine config
+local.properties
+
+# model weights are never committed (Gemma Terms of Use; 2.59 GB)
+*.litertlm
+*.gguf
+*.task
+*.safetensors
+models/
+
+# ide/editor
+.idea/
+*.iml
+.vscode/
+
+# python scratch used by the desktop CLI harness
+__pycache__/
+*.pyc
+
+# build artifacts (the APK is produced by :androidApp:assembleDebug)
+*.apk
