@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="header_sub">本机公民记录 · 开源 Gemma 在你的手机上运行</string>
+
+    <string name="tab_report">记录</string>
+    <string name="tab_map">地图</string>
+    <string name="tab_records">纪录</string>
+    <string name="tab_settings">设置</string>
+
+    <string name="c_photo">1 · 相片</string>
+    <string name="btn_camera">即时拍照</string>
+    <string name="btn_upload">上传照片</string>
+    <string name="btn_blur">模糊人脸／车牌</string>
+    <string name="btn_blur_on">模糊模式已开 —— 点击相片要遮的位置</string>
+    <string name="exif_none">没有 EXIF（截图或从聊天软件保存的相片通常没有）</string>
+    <string name="photo_stats">原始 %1$s → 存档 %2$s（%3$dx%4$d）· EXIF 已清除 · 浮水印 %5$s</string>
+
+    <string name="c_place">2 · 位置</string>
+    <string name="btn_gps">立即用 GPS 定位</string>
+    <string name="btn_exif">用相片 EXIF</string>
+    <string name="hint_addr">地址（可留空，只存在你的手机）</string>
+    <string name="place_none">未记录位置。</string>
+
+    <string name="c_analyse">3 · 本机分析</string>
+    <string name="btn_analyse">用 Gemma 分析</string>
+    <string name="status_idle">准备好就按。</string>
+
+    <string name="c_draft">4 · 1823 个案描述</string>
+    <string name="supp_hint">有没有要特别补充的？（可留空）</string>
+    <string name="btn_copy">复制</string>
+    <string name="btn_save">储存记录</string>
+    <string name="bytes_fmt">UTF-8 字节：%1$d / 1500</string>
+
+    <string name="c_map">探索地图</string>
+    <string name="kpi_cells">格数</string>
+    <string name="kpi_km">公里</string>
+    <string name="btn_route_start">开始记录</string>
+    <string name="btn_route_stop">停止记录</string>
+    <string name="map_legend">灰色＝未走过 · 黄边＝再走一步 · 红点＝已记录问题。\n格子在你的手机上自绘，不会上传。</string>
+    <string name="map_empty">开着记录去走，雾就会一格一格散去（每格约 44 米）。</string>
+
+    <string name="c_records">已储存纪录</string>
+    <string name="empty">暂时未有纪录。</string>
+    <string name="records_n">手机上有 %1$d 条纪录</string>
+    <string name="cells_fmt">已亮起 %1$d 格 · %2$.2f 公里</string>
+    <string name="btn_clear_records">删除全部纪录</string>
+    <string name="clear_confirm">确定删除手机上全部已储存纪录？</string>
+
+    <string name="c_settings">设置</string>
+    <string name="c_lang">语言</string>
+    <string name="lang_system">跟随装置</string>
+    <string name="lang_tc">繁體中文</string>
+    <string name="lang_sc">简体中文</string>
+    <string name="lang_en">English</string>
+    <string name="lang_note">改语言也会改变要求模型用哪种语言写草稿。</string>
+
+    <string name="c_model">本机模型</string>
+    <string name="model_missing">未下载。</string>
+    <string name="model_ready">已就绪，可以载入。</string>
+    <string name="model_size">文件大小：%1$s</string>
+    <string name="model_path">文件夹：%1$s</string>
+    <string name="btn_download">下载（2.59 GB）</string>
+    <string name="btn_resume">继续下载</string>
+    <string name="btn_pause">暂停</string>
+    <string name="btn_load">载入内存</string>
+    <string name="btn_delete">删除模型文件</string>
+    <string name="delete_confirm">确定删除手机上 2.59 GB 的模型文件？</string>
+    <string name="delete_done">模型文件已删除。</string>
+    <string name="dl_progress">%1$s / %2$s · %3$d%%</string>
+    <string name="dl_done">下载完成。</string>
+    <string name="engine_state">引擎：%1$s</string>
+    <string name="engine_off">未载入</string>
+    <string name="engine_on">已载入（%1$s）</string>
+
+    <string name="c_privacy">隐私</string>
+    <string name="privacy_body">相片、坐标、草稿和你走过的格子，全部只存在 app 自己的文件夹。唯一使用网络的地方就是一次性下载模型。</string>
+
+    <string name="st_loading">模型载入中 …</string>
+    <string name="st_loaded_gpu">模型已载入 GPU，可以开始。</string>
+    <string name="st_loaded_cpu">模型已载入 CPU（后备模式），可以开始。</string>
+    <string name="st_load_failed">载入模型失败：%1$s</string>
+    <string name="st_analysing">Gemma 在你的手机分析中 …</string>
+    <string name="st_done">本机完成 —— 没有接触过任何服务器。</string>
+    <string name="st_failed">分析失败：%1$s</string>
+    <string name="st_photo_none">未选择相片。</string>
+    <string name="st_photo_ok">相片已处理并存档在本机。</string>
+    <string name="st_gps_wait">正在定位 …</string>
+    <string name="st_gps_ok">已取得 GPS 位置。</string>
+    <string name="st_route_stop">已停止记录路线。</string>
+    <string name="t_need_model">请先载入模型（设置 → 本机模型）。</string>
+    <string name="t_copied">已复制到剪贴板。</string>
+    <string name="t_saved">已存在本机</string>
+    <string name="t_perm">需要定位权限才能做到。</string>
+    <string name="t_need_photo">请先拍照或选择一张相片。</string>
+    <string name="t_exif_none">这张相片的 EXIF 没有 GPS。</string>
+    <string name="t_cleared">纪录已删除。</string>
+</resources>

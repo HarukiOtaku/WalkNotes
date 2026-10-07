@@ -11,8 +11,8 @@ android {
         applicationId = "com.civicwalk.app"
         minSdk = 26          // LiteRT-LM requires Android 8.0+
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
         // The prototype target is one modern phone (Snapdragon 8 Gen 2, arm64).
         // Every extra ABI adds ~10 MB of LiteRT native libraries to the APK.
         ndk {
@@ -49,4 +49,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.exifinterface:exifinterface:1.3.7")
+    // UI: Material Components gives the tabbed layout, cards and the model-manager progress bar;
+    // AppCompat is what makes the in-app language switch (per-app locales) work.
+    implementation("com.google.android.material:material:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.7.0")
 }

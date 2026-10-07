@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Light palette, kept deliberately close to the HTML prototype the user compared against. -->
+    <color name="bg">#F4F7F5</color>
+    <color name="card">#FFFFFF</color>
+    <color name="ink">#17231C</color>
+    <color name="muted">#6B7A70</color>
+    <color name="line">#DFE6E1</color>
+    <color name="accent">#2F7D52</color>
+    <color name="accent_soft">#DCEFE3</color>
+    <color name="amber">#C9A227</color>
+    <color name="amber_soft">#F7EFD6</color>
+    <color name="issue">#D9534F</color>
+    <color name="fog">#787F7C</color>
+    <color name="map_explored">#ECF7F0</color>
+    <color name="white">#FFFFFF</color>
+</resources>
