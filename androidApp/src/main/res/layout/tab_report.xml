@@ -154,13 +154,47 @@
                 style="@style/SectionTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/c_analyse" />
+                android:text="@string/c_generate" />
+
+            <RadioGroup
+                android:id="@+id/radioMode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="6dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/rbDesc"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    android:text="@string/mode_desc" />
+
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/rbFeel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/mode_feel" />
+
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/rbNoteMode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/mode_note" />
+            </RadioGroup>
+
+            <TextView
+                style="@style/Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="@string/mode_hint" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnAnalyse"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
-                android:text="@string/btn_analyse" />
+                android:text="@string/btn_generate" />
 
             <TextView
                 android:id="@+id/tvStatus"

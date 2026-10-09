@@ -25,11 +25,11 @@
     <string name="btn_analyse">用 Gemma 分析</string>
     <string name="status_idle">准备好就按。</string>
 
-    <string name="c_draft">4 · 1823 个案描述</string>
+    <string name="c_draft">4 · 笔记</string>
     <string name="supp_hint">有没有要特别补充的？（可留空）</string>
     <string name="btn_copy">复制</string>
     <string name="btn_save">储存记录</string>
-    <string name="bytes_fmt">UTF-8 字节：%1$d / 1500</string>
+    <string name="bytes_fmt">UTF-8 字节：%1$d / 600</string>
 
     <string name="c_map">探索地图</string>
     <string name="map_real">街道图</string>
@@ -115,4 +115,29 @@
     <string name="t_need_photo">请先拍照或选择一张相片。</string>
     <string name="t_exif_none">这张相片的 EXIF 没有 GPS。</string>
     <string name="t_cleared">纪录已删除。</string>
+
+    <string name="c_generate">3 · 写笔记</string>
+    <string name="btn_generate">生成笔记</string>
+    <string name="mode_desc">描述</string>
+    <string name="mode_feel">感想</string>
+    <string name="mode_note">笔记</string>
+    <string name="mode_hint">描述＝看到什么 · 感想＝感觉与联想 · 笔记＝时间地点＋要跟进的事</string>
+    <string name="st_note_analysing">Gemma 在你的手机看这张相片 …</string>
+    <string name="st_vision_check">测试这个模型是否真的看得到相片 …</string>
+    <string name="note_need_photo">请先拍照或选择一张相片 —— 笔记是由相片写出来的。</string>
+    <string name="key_hint">关键词（纯文字模型需要）：例如 旧铁闸、油漆剥落</string>
+
+    <string name="c_model_library">模型库</string>
+    <string name="model_vision_tag">看得到相片</string>
+    <string name="model_text_tag">纯文字</string>
+    <string name="model_downloaded">已下载</string>
+    <string name="model_absent">未下载</string>
+    <string name="model_download_now">下载</string>
+    <string name="btn_delete_short">删除</string>
+    <string name="c_storage">储存空间</string>
+    <string name="storage_fmt">手机上的模型：%1$s · 可用空间：%2$s</string>
+    <string name="btn_wipe">删除全部 app 资料</string>
+    <string name="wipe_confirm">确定删除 app 储存的全部笔记、相片、走过的格子和模型文件？</string>
+    <string name="wipe_done">已删除全部 app 资料。</string>
+    <string name="uninstall_note">卸载 app 会连模型一起删除：模型只存在 app 自己的空间，不会放在「下载」或任何共用文件夹。</string>
 </resources>

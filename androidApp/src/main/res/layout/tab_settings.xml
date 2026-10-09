@@ -62,7 +62,7 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- model manager -->
+    <!-- model library -->
     <com.google.android.material.card.MaterialCardView
         style="@style/Card"
         android:layout_width="match_parent"
@@ -78,32 +78,64 @@
                 style="@style/SectionTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/c_model" />
+                android:text="@string/c_model_library" />
+
+            <!-- one row per model, built in code -->
+            <LinearLayout
+                android:id="@+id/modelList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
 
             <TextView
-                android:id="@+id/tvModelState"
+                android:id="@+id/tvStorage"
+                style="@style/Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp" />
+
+            <TextView
+                style="@style/Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/uninstall_note" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnWipe"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="@string/btn_wipe"
+                android:textColor="@color/issue"
+                app:strokeColor="@color/issue" />
+
+            <TextView
+                android:id="@+id/tvEngine"
                 style="@style/Body"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/model_missing" />
+                android:layout_marginTop="10dp" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
-            <TextView
-                android:id="@+id/tvModelSize"
-                style="@style/Hint"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
+    <!-- compute backend -->
+    <com.google.android.material.card.MaterialCardView
+        style="@style/Card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp">
 
-            <TextView
-                android:id="@+id/tvModelPath"
-                style="@style/Hint"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
             <TextView
                 style="@style/SectionTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
                 android:text="@string/c_backend" />
 
             <RadioGroup
@@ -154,87 +186,18 @@
                 android:layout_height="wrap_content"
                 android:visibility="gone" />
 
-            <com.google.android.material.progressindicator.LinearProgressIndicator
-                android:id="@+id/dlProgress"
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnLoadCancel"
+                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:max="100"
-                android:visibility="gone"
-                app:indicatorColor="@color/accent"
-                app:trackColor="@color/line" />
-
-            <TextView
-                android:id="@+id/tvDlText"
-                style="@style/Hint"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:orientation="horizontal">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnModelDownload"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="8dp"
-                    android:layout_weight="1"
-                    android:text="@string/btn_download" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnModelPause"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/btn_pause"
-                    android:visibility="gone" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:orientation="horizontal">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnModelLoad"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="8dp"
-                    android:layout_weight="1"
-                    android:text="@string/btn_load" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnLoadCancel"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/btn_cancel_load"
-                    android:visibility="gone" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnModelDelete"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/btn_delete"
-                    android:textColor="@color/issue"
-                    app:strokeColor="@color/issue" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/tvEngine"
-                style="@style/Hint"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp" />
+                android:layout_marginTop="6dp"
+                android:text="@string/btn_cancel_load"
+                android:visibility="gone" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- privacy + about -->
+    <!-- privacy -->
     <com.google.android.material.card.MaterialCardView
         style="@style/Card"
         android:layout_width="match_parent"

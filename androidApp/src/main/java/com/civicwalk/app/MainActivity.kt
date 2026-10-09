@@ -20,6 +20,7 @@ import android.view.View
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
@@ -33,13 +34,16 @@ import com.civicwalk.core.TextTruncate
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
+import com.google.ai.edge.litertlm.InputData
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.google.android.material.tabs.TabLayout
+import org.json.JSONArray
+import org.json.JSONObject
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.FillLayer
@@ -51,11 +55,7 @@ import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
 import org.maplibre.geojson.Polygon
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import org.json.JSONArray
-import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
@@ -71,45 +71,34 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * CivicWalk — on-device civic reporting.
+ * WalkNotes — a walking notebook that runs entirely on the phone.
  *
- * Four tabs, one job each: report · map · records · settings. Everything except the one-time
- * model download happens on the phone: the photo, the coordinates and the draft never leave it.
+ * Photograph something you pass and an open-weight Gemma model, on the device, writes a
+ * description, an impression or a field note about it. The photo, the coordinates, the words and
+ * the map of where you have walked never leave the phone.
+ *
+ * Four tabs: Note · Map · Records · Settings.
  */
 class MainActivity : AppCompatActivity() {
 
-    private val modelName = "gemma-4-E2B-it.litertlm"
-    private val modelUrl =
-        "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm"
-    private val modelTotal = 2_588_147_712L
-
-    // report tab
+    // note tab
     private lateinit var imgPreview: ImageView
     private lateinit var tvExif: TextView
     private lateinit var tvPhotoStats: TextView
     private lateinit var btnBlur: MaterialButton
     private lateinit var tvPlace: TextView
     private lateinit var etAddr: EditText
-    private lateinit var btnAnalyse: MaterialButton
+    private lateinit var radioMode: RadioGroup
     private lateinit var tvStatus: TextView
-    private lateinit var etDraft: EditText
+    private lateinit var etNote: EditText
     private lateinit var tvBytes: TextView
     private lateinit var etSupp: EditText
 
     // map tab
     private lateinit var fogMap: FogMapView
     private lateinit var mapContainer: FrameLayout
-    private var mapView: MapView? = null
-    private var mapCreated = false
     private lateinit var btnMapReal: MaterialButton
     private lateinit var btnMapGrid: MaterialButton
-    private var mapReady = false
-    private var mapInit = false
-    private var currentTab = 0
-    private var mapCentered = false
-    // MapView.getMapLibreMap() is package-private, so the map handle comes from getMapAsync once.
-    private var mapRef: MapLibreMap? = null
-    private var mapMode = "real"
     private lateinit var kpiCells: TextView
     private lateinit var kpiKm: TextView
     private lateinit var tvRoute: TextView
@@ -120,18 +109,28 @@ class MainActivity : AppCompatActivity() {
 
     // settings tab
     private lateinit var radioLang: RadioGroup
-    private lateinit var tvModelState: TextView
-    private lateinit var tvModelSize: TextView
-    private lateinit var tvModelPath: TextView
-    private lateinit var dlProgress: LinearProgressIndicator
-    private lateinit var tvDlText: TextView
-    private lateinit var btnModelDownload: MaterialButton
-    private lateinit var btnModelPause: MaterialButton
-    private lateinit var btnModelDelete: MaterialButton
+    private lateinit var radioBackend: RadioGroup
+    private lateinit var modelList: LinearLayout
+    private lateinit var tvStorage: TextView
     private lateinit var tvEngine: TextView
     private lateinit var tvVersion: TextView
     private lateinit var tvCrash: TextView
+    private lateinit var loadProgress: LinearProgressIndicator
+    private lateinit var btnLoadCancel: MaterialButton
+    private lateinit var tvLoadInfo: TextView
 
+    private class ModelRow(
+        val entry: ModelEntry,
+        val status: TextView,
+        val bar: LinearProgressIndicator,
+        val primary: MaterialButton,
+        val load: MaterialButton,
+        val delete: MaterialButton
+    )
+
+    private val rows = LinkedHashMap<String, ModelRow>()
+
+    // state
     private var photoFile: File? = null
     private var archiveFile: File? = null
     private var displayBitmap: Bitmap? = null
@@ -150,18 +149,23 @@ class MainActivity : AppCompatActivity() {
     @Volatile private var dlStop = false
     private var dlThread: Thread? = null
 
-    // model loading (progress, cancel, backend choice)
-    private lateinit var radioBackend: RadioGroup
-    private lateinit var loadProgress: LinearProgressIndicator
-    private lateinit var btnLoadCancel: MaterialButton
-    private lateinit var tvLoadInfo: TextView
     @Volatile private var loadCancelled = false
     @Volatile private var loadPhase = ""
     private var loadThread: Thread? = null
-    private val prefs by lazy { getSharedPreferences("civicwalk", MODE_PRIVATE) }
+
+    @Volatile private var busy = false
+    private var busyStart = 0L
+
+    private var mapReady = false
+    private var mapCentered = false
+    private var currentTab = 0
+    private var mapMode = "real"
+    private var mapView: MapView? = null
+    private var mapCreated = false
+    private var mapRef: MapLibreMap? = null
 
     private val main = Handler(Looper.getMainLooper())
-    private val scope = CoroutineScope(Dispatchers.Main)
+    private val prefs by lazy { getSharedPreferences("walknotes", MODE_PRIVATE) }
 
     private val REQ_CAMERA = 1001
     private val REQ_PICK = 1002
@@ -177,12 +181,11 @@ class MainActivity : AppCompatActivity() {
         bindViews()
         loadState()
         wireTabs()
-        wireReport()
+        wireNoteTab()
         wireSettings()
 
         mapMode = prefs.getString("mapmode", "real") ?: "real"
         setMapMode(mapMode)
-        renderCrash()
 
         requestPermissions(
             arrayOf(
@@ -192,13 +195,13 @@ class MainActivity : AppCompatActivity() {
             ), REQ_PERM
         )
 
-        refreshModelManager()
+        buildModelRows()
+        refreshModelRows()
         renderRecords()
         renderRoute()
         renderEngine()
+        renderCrash()
     }
-
-    // ------------------------------------------------------------------ wiring
 
     private fun bindViews() {
         imgPreview = findViewById(R.id.imgPreview)
@@ -207,9 +210,9 @@ class MainActivity : AppCompatActivity() {
         btnBlur = findViewById(R.id.btnBlur)
         tvPlace = findViewById(R.id.tvPlace)
         etAddr = findViewById(R.id.etAddr)
-        btnAnalyse = findViewById(R.id.btnAnalyse)
+        radioMode = findViewById(R.id.radioMode)
         tvStatus = findViewById(R.id.tvStatus)
-        etDraft = findViewById(R.id.etDraft)
+        etNote = findViewById(R.id.etDraft)
         tvBytes = findViewById(R.id.tvBytes)
         etSupp = findViewById(R.id.etSupp)
 
@@ -225,18 +228,12 @@ class MainActivity : AppCompatActivity() {
         tvRecords = findViewById(R.id.tvRecords)
 
         radioLang = findViewById(R.id.radioLang)
-        tvModelState = findViewById(R.id.tvModelState)
-        tvModelSize = findViewById(R.id.tvModelSize)
-        tvModelPath = findViewById(R.id.tvModelPath)
-        dlProgress = findViewById(R.id.dlProgress)
-        tvDlText = findViewById(R.id.tvDlText)
-        btnModelDownload = findViewById(R.id.btnModelDownload)
-        btnModelPause = findViewById(R.id.btnModelPause)
-        btnModelDelete = findViewById(R.id.btnModelDelete)
+        radioBackend = findViewById(R.id.radioBackend)
+        modelList = findViewById(R.id.modelList)
+        tvStorage = findViewById(R.id.tvStorage)
         tvEngine = findViewById(R.id.tvEngine)
         tvVersion = findViewById(R.id.tvVersion)
         tvCrash = findViewById(R.id.tvCrash)
-        radioBackend = findViewById(R.id.radioBackend)
         loadProgress = findViewById(R.id.loadProgress)
         btnLoadCancel = findViewById(R.id.btnLoadCancel)
         tvLoadInfo = findViewById(R.id.tvLoadInfo)
@@ -269,19 +266,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun wireReport() {
+    private fun wireNoteTab() {
         findViewById<MaterialButton>(R.id.btnCamera).setOnClickListener { takePhoto() }
         findViewById<MaterialButton>(R.id.btnUpload).setOnClickListener { pickPhoto() }
         findViewById<MaterialButton>(R.id.btnGps).setOnClickListener { useGps() }
         findViewById<MaterialButton>(R.id.btnExifLoc).setOnClickListener { useExifLocation() }
-        findViewById<MaterialButton>(R.id.btnCopy).setOnClickListener { copyDraft() }
-        findViewById<MaterialButton>(R.id.btnSave).setOnClickListener { saveRecord() }
+        findViewById<MaterialButton>(R.id.btnCopy).setOnClickListener { copyNote() }
+        findViewById<MaterialButton>(R.id.btnSave).setOnClickListener { saveNote() }
         findViewById<MaterialButton>(R.id.btnClearRecords).setOnClickListener { confirmClearRecords() }
+        findViewById<MaterialButton>(R.id.btnAnalyse).setOnClickListener { generateNote() }
         btnRoute.setOnClickListener { toggleRoute() }
         btnMapReal.setOnClickListener { setMapMode("real") }
         btnMapGrid.setOnClickListener { setMapMode("grid") }
-
-        btnAnalyse.setOnClickListener { analyse() }
 
         btnBlur.setOnClickListener {
             blurMode = !blurMode
@@ -292,8 +288,7 @@ class MainActivity : AppCompatActivity() {
                 blurAt(v as ImageView, ev); true
             } else false
         }
-
-        etDraft.addTextChangedListener(object : android.text.TextWatcher {
+        etNote.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
             override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
             override fun afterTextChanged(s: android.text.Editable?) = updateBytes()
@@ -322,13 +317,6 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-        btnModelDownload.setOnClickListener { startDownload() }
-        btnModelPause.setOnClickListener { dlStop = true; btnModelPause.visibility = View.GONE }
-        btnLoadCancel.setOnClickListener {
-            loadCancelled = true
-            toast(getString(R.string.st_cancelled))
-        }
-
         radioBackend.check(
             when (backendChoice()) {
                 "gpu" -> R.id.rbGpuOnly
@@ -344,10 +332,12 @@ class MainActivity : AppCompatActivity() {
             }
             prefs.edit().putString("backend", v).apply()
         }
-        tvEngine.setOnClickListener { renderEngine() }
-        findViewById<MaterialButton>(R.id.btnModelLoad).setOnClickListener { loadModel() }
-        btnModelDelete.setOnClickListener { confirmDeleteModel() }
 
+        btnLoadCancel.setOnClickListener {
+            loadCancelled = true
+            toast(getString(R.string.st_cancelled))
+        }
+        findViewById<MaterialButton>(R.id.btnWipe).setOnClickListener { confirmWipe() }
         tvVersion.text = getString(R.string.app_name) + " " + versionName()
     }
 
@@ -355,65 +345,152 @@ class MainActivity : AppCompatActivity() {
         packageManager.getPackageInfo(packageName, 0).versionName ?: "-"
     } catch (_: Throwable) { "-" }
 
-    // ------------------------------------------------------------------ model manager
+    // ----------------------------------------------------------------- model library
 
-    private fun modelTarget(): File = File(getExternalFilesDir(null) ?: filesDir, modelName)
+    private fun modelDir(): File = getExternalFilesDir(null) ?: filesDir
 
-    private fun modelPartial(): File = File(getExternalFilesDir(null) ?: filesDir, "$modelName.part")
+    private fun modelTarget(e: ModelEntry): File = File(modelDir(), e.fileName)
 
-    private fun findModel(): File? =
-        listOf(modelTarget(), File(filesDir, modelName)).firstOrNull { it.isFile && it.length() > 1_000_000_000L }
+    private fun modelPartial(e: ModelEntry): File = File(modelDir(), e.fileName + ".part")
 
-    private fun refreshModelManager() {
-        val f = findModel()
-        val partial = modelPartial()
-        if (f != null) {
-            btnModelDownload.text = getString(R.string.btn_download)
-            tvModelState.text = getString(R.string.model_ready)
-            tvModelSize.text = getString(R.string.model_size, mb(f.length()))
-        } else if (partial.isFile && partial.length() > 0) {
-            btnModelDownload.text = getString(R.string.btn_resume)
-            tvModelState.text = getString(R.string.model_missing)
-            tvModelSize.text = getString(R.string.model_size, mb(partial.length()))
-        } else {
-            btnModelDownload.text = getString(R.string.btn_download)
-            tvModelState.text = getString(R.string.model_missing)
-            tvModelSize.text = ""
+    private fun modelFiles(): List<File> =
+        (modelDir().listFiles() ?: emptyArray())
+            .filter { it.name.endsWith(".litertlm") || it.name.endsWith(".part") }
+
+    /** A model counts as installed only when its exact byte count is present. */
+    private fun isInstalled(e: ModelEntry): Boolean {
+        val f = modelTarget(e)
+        return f.isFile && f.length() == e.sizeBytes
+    }
+
+    private fun buildModelRows() {
+        modelList.removeAllViews()
+        rows.clear()
+        ModelCatalog.entries.forEach { entry ->
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(0, 12, 0, 12)
+            }
+            val title = TextView(this).apply {
+                text = "${entry.label}  ·  ${entry.sizeLabel}  ·  " +
+                    getString(if (entry.vision) R.string.model_vision_tag else R.string.model_text_tag)
+                textSize = 15f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+            }
+            val desc = TextView(this).apply {
+                text = if (isChineseUi()) entry.noteZh else entry.noteEn
+                textSize = 12f
+                setTextColor(android.graphics.Color.parseColor("#6B7A70"))
+            }
+            val status = TextView(this).apply {
+                textSize = 12f
+                setTextColor(android.graphics.Color.parseColor("#6B7A70"))
+            }
+            val bar = LinearProgressIndicator(this).apply {
+                max = 100
+                isIndeterminate = false
+                visibility = View.GONE
+                trackColor = android.graphics.Color.parseColor("#DFE6E1")
+                setIndicatorColor(android.graphics.Color.parseColor("#2F7D52"))
+            }
+            val btns = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            val primary = MaterialButton(this).apply { text = getString(R.string.model_download_now) }
+            val load = MaterialButton(this).apply {
+                text = getString(R.string.btn_load)
+                visibility = View.GONE
+            }
+            val delete = MaterialButton(this).apply {
+                text = getString(R.string.btn_delete_short)
+                visibility = View.GONE
+            }
+            btns.addView(primary, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            btns.addView(load, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            btns.addView(delete, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+
+            row.addView(title)
+            row.addView(desc)
+            row.addView(status)
+            row.addView(bar)
+            row.addView(btns)
+            modelList.addView(row)
+
+            rows[entry.id] = ModelRow(entry, status, bar, primary, load, delete)
+
+            primary.setOnClickListener { startDownload(entry) }
+            load.setOnClickListener { loadModel(entry) }
+            delete.setOnClickListener { confirmDeleteModel(entry) }
         }
-        tvModelPath.text = getString(R.string.model_path, (getExternalFilesDir(null) ?: filesDir).absolutePath)
-        renderEngine()
     }
 
-    private fun renderEngine() {
-        val e = sharedEngine
-        tvEngine.text = getString(
-            R.string.engine_state,
-            if (e == null) getString(R.string.engine_off)
-            else getString(R.string.engine_on, sharedBackend.ifEmpty { "LiteRT-LM" })
-        )
+    private fun isChineseUi(): Boolean {
+        val tag = AppCompatDelegate.getApplicationLocales().toLanguageTags()
+        val sys = resources.configuration.locales[0].toLanguageTag()
+        return (if (tag.isEmpty()) sys else tag).startsWith("zh")
     }
 
-    private fun startDownload() {
+    private fun refreshModelRows() {
+        var onDisk = 0L
+        ModelCatalog.entries.forEach { e ->
+            val row = rows[e.id] ?: return@forEach
+            val installed = isInstalled(e)
+            val partial = modelPartial(e)
+            when {
+                installed -> {
+                    onDisk += modelTarget(e).length()
+                    row.status.text = getString(R.string.model_downloaded) + " · " + e.sizeLabel
+                    row.primary.visibility = View.GONE
+                    row.load.visibility = View.VISIBLE
+                    row.delete.visibility = View.VISIBLE
+                }
+                partial.isFile && partial.length() > 0 -> {
+                    onDisk += partial.length()
+                    val pct = ((partial.length() * 100) / e.sizeBytes).toInt().coerceIn(0, 100)
+                    row.status.text = getString(R.string.dl_progress, mb(partial.length()), e.sizeLabel, pct)
+                    row.primary.text = getString(R.string.btn_resume)
+                    row.primary.visibility = View.VISIBLE
+                    row.load.visibility = View.GONE
+                    row.delete.visibility = View.VISIBLE
+                }
+                else -> {
+                    onDisk += legacyBytes(e)
+                    row.status.text = getString(R.string.model_absent)
+                    row.primary.text = getString(R.string.model_download_now)
+                    row.primary.visibility = View.VISIBLE
+                    row.load.visibility = View.GONE
+                    row.delete.visibility = View.GONE
+                }
+            }
+        }
+        tvStorage.text = getString(R.string.storage_fmt, mb(onDisk), mb(modelDir().usableSpace))
+    }
+
+    /** A file left under the final name by an older build that did not use a .part file. */
+    private fun legacyBytes(e: ModelEntry): Long =
+        modelTarget(e).takeIf { it.isFile && it.length() < e.sizeBytes }?.length() ?: 0L
+
+    private fun startDownload(entry: ModelEntry) {
         if (dlThread?.isAlive == true) return
-        val target = modelTarget()
-        if (target.isFile && target.length() > 1_000_000_000L) { refreshModelManager(); return }
+        if (isInstalled(entry)) { refreshModelRows(); return }
 
-        var partial = modelPartial()
-        val already = if (partial.isFile) partial.length()
-        else (modelTarget().takeIf { it.isFile && it.length() < modelTotal }?.length() ?: 0L)
-        if (already > 0 && !partial.isFile) {
-            // A download left over from an older version (partial file under the final name):
-            // move it aside so the resume continues instead of throwing 2.59 GB away.
-            modelTarget().renameTo(partial)
+        val partial = modelPartial(entry)
+        var already = if (partial.isFile) partial.length() else 0L
+        if (already == 0L) {
+            val legacy = modelTarget(entry)
+            if (legacy.isFile && legacy.length() < entry.sizeBytes) {
+                // Left over from a build that downloaded straight to the final name: resume it.
+                legacy.renameTo(partial)
+                already = partial.length()
+            }
         }
+
         dlStop = false
-        dlProgress.visibility = View.VISIBLE
-        btnModelPause.visibility = View.VISIBLE
-        renderDownload(already)
+        val row = rows[entry.id]
+        row?.bar?.visibility = View.VISIBLE
+        row?.status?.text = getString(R.string.dl_progress, mb(already), entry.sizeLabel, 0)
 
         dlThread = Thread {
             try {
-                val conn = (URL(modelUrl).openConnection() as HttpURLConnection)
+                val conn = (URL(entry.url).openConnection() as HttpURLConnection)
                 conn.connectTimeout = 15_000
                 conn.readTimeout = 30_000
                 conn.instanceFollowRedirects = true
@@ -436,53 +513,49 @@ class MainActivity : AppCompatActivity() {
                             if (now - lastPost > 400) {
                                 lastPost = now
                                 val seen = total
-                                main.post { renderDownload(seen) }
+                                main.post { renderRowProgress(entry, seen) }
                             }
                         }
                     }
                 }
-                val finished = partial.length() >= modelTotal - 1_000_000L
-                if (finished && !dlStop) {
-                    if (target.exists()) target.delete()
-                    val ok = partial.renameTo(target)
-                    main.post {
-                        tvDlText.text = if (ok) getString(R.string.dl_done) else ""
-                        dlProgress.visibility = View.GONE
-                        btnModelPause.visibility = View.GONE
-                        refreshModelManager()
-                    }
-                } else {
-                    main.post {
-                        renderDownload(partial.length())
-                        dlProgress.visibility = View.GONE
-                        btnModelPause.visibility = View.GONE
-                        refreshModelManager()
-                    }
+                val complete = partial.length() == entry.sizeBytes
+                if (complete && !dlStop) {
+                    if (modelTarget(entry).exists()) modelTarget(entry).delete()
+                    partial.renameTo(modelTarget(entry))
+                }
+                main.post {
+                    row?.bar?.visibility = View.GONE
+                    refreshModelRows()
                 }
             } catch (t: Throwable) {
                 main.post {
-                    tvDlText.text = "Download failed: ${t.message}"
-                    dlProgress.visibility = View.GONE
-                    btnModelPause.visibility = View.GONE
+                    row?.bar?.visibility = View.GONE
+                    row?.status?.text = "Download failed: ${t.message}"
+                    refreshModelRows()
                 }
             }
         }.also { it.start() }
     }
 
-    private fun renderDownload(done: Long) {
-        val pct = ((done * 100) / modelTotal).toInt().coerceIn(0, 100)
-        dlProgress.setProgress(pct, true)
-        tvDlText.text = getString(R.string.dl_progress, mb(done), mb(modelTotal), pct)
+    private fun renderRowProgress(e: ModelEntry, done: Long) {
+        val row = rows[e.id] ?: return
+        val pct = ((done * 100) / e.sizeBytes).toInt().coerceIn(0, 100)
+        row.bar.setProgress(pct, true)
+        row.status.text = getString(R.string.dl_progress, mb(done), e.sizeLabel, pct)
     }
 
     /** Backend preference: "cpu" (default, always works), "auto" (GPU then CPU), "gpu". */
     private fun backendChoice(): String = prefs.getString("backend", "cpu") ?: "cpu"
 
-    private fun loadModel() {
-        if (sharedEngine != null) { toast(getString(R.string.st_backend_ok, sharedBackend.ifEmpty { "?" })); return }
-        val f = findModel() ?: run { toast(getString(R.string.model_missing)); return }
+    private fun loadModel(entry: ModelEntry) {
+        if (sharedEngine != null) {
+            toast(getString(R.string.st_backend_ok, sharedModelLabel.ifEmpty { "?" }))
+            return
+        }
+        if (!isInstalled(entry)) { toast(getString(R.string.model_absent)); return }
         if (loadThread?.isAlive == true) return
 
+        val f = modelTarget(entry)
         loadCancelled = false
         // CPU first is deliberate: on most Android devices the GPU backend initialises happily and
         // then dies at inference time with "Can not find OpenCL library on this device", which is
@@ -528,10 +601,11 @@ class MainActivity : AppCompatActivity() {
                     e = Engine(cfg)
                     e.initialize()
                     if (loadCancelled) { try { e.close() } catch (_: Throwable) {}; break }
-                    loadPhase = getString(R.string.st_verify)
-                    if (smokeTest(e)) {
+                    loadPhase = getString(if (entry.vision) R.string.st_vision_check else R.string.st_verify)
+                    if (smokeTest(e, entry)) {
                         sharedEngine = e
                         sharedBackend = if (useGpu) "GPU" else "CPU"
+                        sharedModelLabel = entry.label
                         ok = true
                         how = sharedBackend
                         e = null                       // keep it open
@@ -553,9 +627,7 @@ class MainActivity : AppCompatActivity() {
                 btnLoadCancel.visibility = View.GONE
                 tvLoadInfo.visibility = View.GONE
                 when {
-                    loadCancelled -> {
-                        tvStatus.text = getString(R.string.st_cancelled)
-                    }
+                    loadCancelled -> tvStatus.text = getString(R.string.st_cancelled)
                     ok -> {
                         tvStatus.text = getString(
                             if (how == "GPU") R.string.st_loaded_gpu else R.string.st_loaded_cpu
@@ -571,38 +643,90 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * One tiny synchronous generation. A backend that initialises but cannot actually infer must
-     * fail here rather than at the user's first real photo.
+     * fail here rather than at the user's first real photo. For a vision build the check also
+     * pushes a generated PNG through the image path, because the vision encoder is a separate
+     * graph and can fail on its own.
      */
-    private fun smokeTest(e: Engine): Boolean = try {
-        e.createConversation().use { c ->
-            c.sendMessage("Say OK").toString()
+    private fun smokeTest(e: Engine, entry: ModelEntry): Boolean = try {
+        e.createSession().use { s ->
+            val inputs = ArrayList<InputData>()
+            inputs.add(InputData.Text("Reply with one short word."))
+            if (entry.vision) inputs.add(InputData.Image(tinyPng()))
+            s.generateContent(inputs)
             true
         }
     } catch (t: Throwable) { false }
 
+    private fun tinyPng(): ByteArray {
+        val bmp = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888)
+        Canvas(bmp).drawColor(android.graphics.Color.rgb(47, 125, 82))
+        val out = ByteArrayOutputStream()
+        bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+        return out.toByteArray()
+    }
 
-    private fun confirmDeleteModel() {
-        val f = findModel() ?: modelPartial().takeIf { it.isFile }
-        if (f == null) { toast(getString(R.string.model_missing)); return }
+    private fun confirmDeleteModel(entry: ModelEntry) {
         AlertDialog.Builder(this)
             .setMessage(R.string.delete_confirm)
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(android.R.string.ok) { _, _ ->
-                try {
-                    sharedEngine?.close()
+                if (sharedModelLabel == entry.label) {
+                    try { sharedEngine?.close() } catch (_: Throwable) {}
                     sharedEngine = null
-                    f.delete()
-                    modelPartial().delete()
-                    toast(getString(R.string.delete_done))
-                } catch (t: Throwable) { toast("Delete failed: ${t.message}") }
-                dlProgress.visibility = View.GONE
-                tvDlText.text = ""
-                refreshModelManager()
+                    sharedModelLabel = ""
+                }
+                modelTarget(entry).delete()
+                modelPartial(entry).delete()
+                toast(getString(R.string.delete_done))
+                refreshModelRows()
+                renderEngine()
             }
             .show()
     }
 
-    // ------------------------------------------------------------------ photo
+    private fun confirmWipe() {
+        AlertDialog.Builder(this)
+            .setMessage(R.string.wipe_confirm)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(android.R.string.ok) { _, _ -> wipeAll() }
+            .show()
+    }
+
+    /** Uninstalling the app does all of this too — nothing is written outside the app's own storage. */
+    private fun wipeAll() {
+        try { sharedEngine?.close() } catch (_: Throwable) {}
+        sharedEngine = null
+        sharedModelLabel = ""
+        modelFiles().forEach { it.delete() }
+        File(filesDir, "records.json").delete()
+        File(filesDir, "cells.json").delete()
+        File(filesDir, "photos").deleteRecursively()
+        File(cacheDir, "photos").deleteRecursively()
+        cells.clear()
+        routePoints.clear()
+        distanceKm = 0.0
+        lastPoint = null
+        photoFile = null
+        archiveFile = null
+        displayBitmap = null
+        etNote.setText("")
+        renderRecords()
+        renderRoute()
+        renderEngine()
+        refreshModelRows()
+        toast(getString(R.string.wipe_done))
+    }
+
+    private fun renderEngine() {
+        val e = sharedEngine
+        tvEngine.text = getString(
+            R.string.engine_state,
+            if (e == null) getString(R.string.engine_off)
+            else getString(R.string.engine_on, "$sharedModelLabel / $sharedBackend")
+        )
+    }
+
+    // ----------------------------------------------------------------- photo
 
     private fun takePhoto() {
         val dir = File(cacheDir, "photos").apply { mkdirs() }
@@ -653,7 +777,7 @@ class MainActivity : AppCompatActivity() {
                 ?: ex.getAttribute(ExifInterface.TAG_DATETIME)
             exifTime = d?.replaceFirst(":", "-")?.replaceFirst(":", "-")
             val gps = if (latLon != null) " · GPS %.5f, %.5f".format(latLon[0], latLon[1]) else ""
-            tvExif.text = (exifTime ?: "") + gps
+            tvExif.text = (exifTime ?: getString(R.string.exif_none)) + gps
         } catch (t: Throwable) {
             exifLoc = null; exifTime = null
             tvExif.text = getString(R.string.exif_none)
@@ -693,7 +817,7 @@ class MainActivity : AppCompatActivity() {
         val out = src.copy(Bitmap.Config.ARGB_8888, true)
         val c = Canvas(out)
         val label = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date()) +
-            (currentPoint()?.let { "  %.4f, %.4f".format(it[0], it[1]) } ?: "") + "  CivicWalk"
+            (currentPoint()?.let { "  %.4f, %.4f".format(it[0], it[1]) } ?: "") + "  WalkNotes"
         val size = max(22f, out.width / 30f)
         val p = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             textSize = size
@@ -727,7 +851,7 @@ class MainActivity : AppCompatActivity() {
         } catch (t: Throwable) { toast("Blur failed: ${t.message}") }
     }
 
-    // ------------------------------------------------------------------ location
+    // ----------------------------------------------------------------- location
 
     private fun requireLocationPerm(): Boolean =
         checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -779,87 +903,154 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ------------------------------------------------------------------ analyse
+    // ----------------------------------------------------------------- the note
 
-    /** The report language follows the app language unless the user is on "follow the device". */
-    private fun reportLanguageName(): String {
+    private fun noteMode(): String = when (radioMode.checkedRadioButtonId) {
+        R.id.rbFeel -> "feel"
+        R.id.rbNoteMode -> "note"
+        else -> "desc"
+    }
+
+    private fun modeName(): String = when (noteMode()) {
+        "feel" -> getString(R.string.mode_feel)
+        "note" -> getString(R.string.mode_note)
+        else -> getString(R.string.mode_desc)
+    }
+
+    private fun modeLabel(mode: String): String = when (mode) {
+        "feel" -> getString(R.string.mode_feel)
+        "note" -> getString(R.string.mode_note)
+        else -> getString(R.string.mode_desc)
+    }
+
+    /** The note language follows the app language unless the user is on "follow the device". */
+    private fun noteLanguage(): String {
         val tag = AppCompatDelegate.getApplicationLocales().toLanguageTags()
         val sys = resources.configuration.locales[0].toLanguageTag()
         val effective = if (tag.isEmpty()) sys else tag
         return when {
-            effective.startsWith("zh-Hans") -> "Simplified Chinese (简体中文)"
-            effective.startsWith("zh") -> "Traditional Chinese (繁體中文)"
+            effective.startsWith("zh-Hans") -> "Simplified Chinese"
+            effective.startsWith("zh") -> "Traditional Chinese"
             else -> "English"
         }
     }
 
-    private fun analyse() {
-        val e = sharedEngine ?: run { toast(getString(R.string.t_need_model)); return }
+    private fun buildPrompt(entry: ModelEntry): String {
         val stamps = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date())
-        val utc = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)
-            .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }.format(Date())
-        val prompt = """
-            You are the on-device assistant of a Hong Kong civic-reporting app.
-            A photo of a street or pavement has been taken by the user.
-            Location: ${placeLabel()}
-            Local time: $stamps (UTC: $utc)
+        val userWords = etSupp.text.toString().trim()
+        val instruction = when (noteMode()) {
+            "desc" -> "Describe only what is actually in the photo: objects, materials, colours, " +
+                "numbers, state of repair. No feelings, no opinions."
+            "feel" -> "Write a short first-person impression of this place: what it recalls, what it " +
+                "made you feel. Stay specific to what is in the photo."
+            else -> "Write a compact field note: the time, the place, what can be seen, and one thing " +
+                "worth looking up or coming back to later."
+        }
+        val grounding = if (entry.vision)
+            "A photo taken by the user is attached; the note must be grounded in what is visible in it."
+        else
+            "You cannot see any image. Base the note strictly on the user's own words below; if they " +
+                "are empty, keep it to the time and place only."
+        return """
+            You are the on-device writer of a Hong Kong walking notebook. The user is out walking and
+            has photographed something they passed.
 
-            Write ONLY the body of a case report to paste into the HKSAR 1823 online form.
-            Language: ${reportLanguageName()}.
-            Rules: describe only what is visible in a photo of this kind;
-            do not invent a district or street name; state facts, no accusations, no personal names;
-            120-200 Chinese characters (or 60-100 words in English); end with the action requested.
+            Note type: ${modeName()}. $instruction
+            $grounding
+            Place: ${placeLabel()}
+            Time: $stamps
+            The user's own words: ${userWords.ifEmpty { "(none)" }}
+
+            Rules: write in ${noteLanguage()}; 40-90 words (in Chinese 60-140 characters); do not
+            invent street names, districts, brand names or numbers that are not visible or supplied;
+            no greeting, no heading, no list, no emoji; output only the note itself.
         """.trimIndent()
+    }
 
-        tvStatus.text = getString(R.string.st_analysing)
-        etDraft.setText("")
-        scope.launch {
-            val sb = StringBuilder()
-            try {
-                e.createConversation().use { conv ->
-                    conv.sendMessageAsync(prompt).collect { chunk ->
-                        sb.append(chunk)
-                        etDraft.setText(sb.toString())
-                    }
-                }
-                val shown = TextTruncate.truncateUtf8(sb.toString(), 1500)
-                if (shown.length != sb.length) etDraft.setText(shown)
-                updateBytes()
-                tvStatus.text = getString(R.string.st_done)
-            } catch (t: Throwable) {
-                tvStatus.text = getString(R.string.st_failed, t.message ?: "?")
+    private fun generateNote() {
+        val e = sharedEngine ?: run { toast(getString(R.string.t_need_model)); return }
+        val entry = ModelCatalog.entries.firstOrNull { it.label == sharedModelLabel } ?: ModelCatalog.default()
+        val photo = archiveFile
+        if (entry.vision && (photo == null || !photo.isFile)) {
+            toast(getString(R.string.note_need_photo)); return
+        }
+        if (busy) return
+
+        val prompt = buildPrompt(entry)
+        val statusText = getString(if (entry.vision) R.string.st_note_analysing else R.string.st_analysing)
+        busy = true
+        busyStart = System.currentTimeMillis()
+        tvStatus.text = statusText
+        etNote.setText("")
+
+        val tick = object : Runnable {
+            override fun run() {
+                if (!busy) return
+                val s = ((System.currentTimeMillis() - busyStart) / 1000).toInt()
+                tvStatus.text = statusText + " · " + getString(R.string.st_load_elapsed, s)
+                main.postDelayed(this, 1000)
             }
         }
+        main.post(tick)
+
+        Thread {
+            var text = ""
+            var error: String? = null
+            try {
+                e.createSession().use { s ->
+                    val inputs = ArrayList<InputData>()
+                    inputs.add(InputData.Text(prompt))
+                    if (entry.vision && photo != null) inputs.add(InputData.Image(photo.readBytes()))
+                    text = s.generateContent(inputs)
+                }
+            } catch (t: Throwable) {
+                error = t.message ?: "unknown"
+            }
+            val trimmed = text.trim()
+            val shown = TextTruncate.truncateUtf8(trimmed, 600)
+            main.post {
+                busy = false
+                if (error != null) {
+                    tvStatus.text = getString(R.string.st_failed, error)
+                } else {
+                    etNote.setText(shown)
+                    updateBytes()
+                    tvStatus.text = getString(R.string.st_done)
+                }
+            }
+        }.also { it.start() }
     }
 
     private fun updateBytes() {
-        val n = etDraft.text.toString().toByteArray(Charsets.UTF_8).size
+        val n = etNote.text.toString().toByteArray(Charsets.UTF_8).size
         tvBytes.text = getString(R.string.bytes_fmt, n)
     }
 
-    private fun copyDraft() {
+    private fun copyNote() {
         val cm = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
-        cm.setPrimaryClip(android.content.ClipData.newPlainText("1823 draft", etDraft.text.toString()))
+        cm.setPrimaryClip(android.content.ClipData.newPlainText("note", etNote.text.toString()))
         toast(getString(R.string.t_copied))
     }
 
-    // ------------------------------------------------------------------ records
+    // ----------------------------------------------------------------- records
 
     private fun recordsFile() = File(filesDir, "records.json")
 
-    private fun saveRecord() {
+    private fun saveNote() {
         try {
             val arr = if (recordsFile().isFile) JSONArray(recordsFile().readText()) else JSONArray()
             val p = currentPoint()
             val o = JSONObject().apply {
                 put("time_local", SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date()))
+                put("mode", noteMode())
                 put("place_label", placeLabel())
                 put("lat", p?.get(0) ?: JSONObject.NULL)
                 put("lon", p?.get(1) ?: JSONObject.NULL)
                 put("photo", archiveFile?.absolutePath ?: "")
-                put("draft", etDraft.text.toString())
-                put("report_language", reportLanguageName())
-                put("supplement", etSupp.text.toString())
+                put("note", etNote.text.toString())
+                put("note_language", noteLanguage())
+                put("model", sharedModelLabel)
+                put("user_words", etSupp.text.toString())
             }
             arr.put(o)
             recordsFile().writeText(arr.toString())
@@ -876,9 +1067,12 @@ class MainActivity : AppCompatActivity() {
                 if (arr.length() == 0) getString(R.string.empty)
                 else {
                     val head = getString(R.string.records_n, arr.length())
-                    val body = (0 until arr.length()).joinToString("\n") { i ->
+                    val body = (0 until arr.length()).joinToString("\n\n") { i ->
                         val o = arr.getJSONObject(i)
-                        "${i + 1}.  ${o.optString("time_local")}\n     ${o.optString("place_label")}"
+                        val first = o.optString("note").lineSequence().firstOrNull()?.take(80) ?: ""
+                        "${i + 1}.  [${modeLabel(o.optString("mode"))}]  ${o.optString("time_local")}\n" +
+                            "     ${o.optString("place_label")}\n" +
+                            "     $first"
                     }
                     "$head\n\n$body"
                 }
@@ -899,7 +1093,7 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // ------------------------------------------------------------------ route / fog
+    // ----------------------------------------------------------------- route / fog
 
     private fun cellsFile() = File(filesDir, "cells.json")
 
@@ -977,13 +1171,26 @@ class MainActivity : AppCompatActivity() {
         pushMapData()
     }
 
-    // ------------------------------------------------------------- street map (MapLibre)
+    private fun cellKey(lat: Double, lon: Double): String =
+        "${Math.round(lat / 0.0004)}:${Math.round(lon / 0.0004)}"
+
+    private fun cellKeyLat(k: String) = k.substringBefore(":").toInt() * 0.0004
+    private fun cellKeyLon(k: String) = k.substringAfter(":").toInt() * 0.0004
+
+    private fun haversine(a: DoubleArray, b: DoubleArray): Double {
+        val r = 6371000.0
+        val dLat = Math.toRadians(b[0] - a[0]); val dLon = Math.toRadians(b[1] - a[1])
+        val l1 = Math.toRadians(a[0]); val l2 = Math.toRadians(b[0])
+        val h = sin(dLat / 2) * sin(dLat / 2) + cos(l1) * cos(l2) * sin(dLon / 2) * sin(dLon / 2)
+        return 2 * r * asin(sqrt(h))
+    }
+
+    // ----------------------------------------------------------------- street map
 
     /**
-     * Real street map, drawn from the free OpenFreeMap vector tiles (no API key). Explored cells,
-     * the walked line and the reported issues are our own GeoJSON layers on top. The tiles are the
-     * only thing that needs the network; the offline grid mode shows the same data with no network
-     * at all, which is what the app falls back to.
+     * Real street map from the free OpenFreeMap vector tiles (no API key). The walked cells, the
+     * route and the note positions are our own GeoJSON layers on top. Tiles are the only thing that
+     * needs the network; the offline grid shows the same data with no network at all.
      */
     private fun initMap() {
         if (mapCreated) return
@@ -1130,23 +1337,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun cellKeyLat(k: String) = k.substringBefore(":").toInt() * 0.0004
-    private fun cellKeyLon(k: String) = k.substringAfter(":").toInt() * 0.0004
+    // ----------------------------------------------------------------- misc
 
-    private fun cellKey(lat: Double, lon: Double): String =
-        "${Math.round(lat / 0.0004)}:${Math.round(lon / 0.0004)}"
-
-    private fun haversine(a: DoubleArray, b: DoubleArray): Double {
-        val r = 6371000.0
-        val dLat = Math.toRadians(b[0] - a[0]); val dLon = Math.toRadians(b[1] - a[1])
-        val l1 = Math.toRadians(a[0]); val l2 = Math.toRadians(b[0])
-        val h = sin(dLat / 2) * sin(dLat / 2) + cos(l1) * cos(l2) * sin(dLon / 2) * sin(dLon / 2)
-        return 2 * r * asin(sqrt(h))
-    }
-
-    // ------------------------------------------------------------------ misc
-
-    private fun mb(bytes: Long): String = "%.0f MB".format(bytes / 1_000_000.0)
+    private fun mb(bytes: Long): String =
+        if (bytes >= 1_000_000_000L) "%.2f GB".format(bytes / 1_000_000_000.0)
+        else "%.0f MB".format(bytes / 1_000_000.0)
 
     private fun kb(bytes: Long): String =
         if (bytes >= 1_000_000) "%.1f MB".format(bytes / 1_000_000.0) else "${bytes / 1024} KB"
@@ -1191,20 +1386,23 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         // The engine is intentionally process-scoped (see companion): a language change recreates
-        // the activity, and re-loading a 2.59 GB model every time would be unacceptable.
+        // the activity, and re-loading a multi-gigabyte model every time would be unacceptable.
         dlStop = true
+        busy = false
         mapView?.onDestroy()
     }
 
     companion object {
         /**
          * Process-scoped so that an activity recreation (orientation, language switch) does not
-         * throw away a loaded 2.59 GB model. The OS reclaims it with the process.
+         * throw away a loaded model. The OS reclaims it with the process, and the user can drop it
+         * explicitly from Settings.
          */
         @Volatile private var sharedEngine: Engine? = null
         @Volatile private var sharedBackend: String = ""
+        @Volatile private var sharedModelLabel: String = ""
 
-        /** Free vector tiles, no API key — the same style the HTML prototype used. */
+        /** Free vector tiles, no API key. */
         private const val MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty"
     }
 }

@@ -25,11 +25,11 @@
     <string name="btn_analyse">用 Gemma 分析</string>
     <string name="status_idle">準備好就撳。</string>
 
-    <string name="c_draft">4 · 1823 個案描述</string>
+    <string name="c_draft">4 · 筆記</string>
     <string name="supp_hint">有冇嘢要特別補充？（可留空）</string>
     <string name="btn_copy">複製</string>
     <string name="btn_save">儲存記錄</string>
-    <string name="bytes_fmt">UTF-8 位元組：%1$d / 1500</string>
+    <string name="bytes_fmt">UTF-8 位元組：%1$d / 600</string>
 
     <string name="c_map">探索地圖</string>
     <string name="map_real">街道圖</string>
@@ -115,4 +115,29 @@
     <string name="t_need_photo">請先影相或揀一張相。</string>
     <string name="t_exif_none">呢張相嘅 EXIF 冇 GPS。</string>
     <string name="t_cleared">紀錄已刪除。</string>
+
+    <string name="c_generate">3 · 寫筆記</string>
+    <string name="btn_generate">生成筆記</string>
+    <string name="mode_desc">描述</string>
+    <string name="mode_feel">感想</string>
+    <string name="mode_note">筆記</string>
+    <string name="mode_hint">描述＝見到咩 · 感想＝感覺同聯想 · 筆記＝時間地點＋要跟進嘅事</string>
+    <string name="st_note_analysing">Gemma 喺你部機睇緊張相 …</string>
+    <string name="st_vision_check">測試呢個模型係咪真係睇得到相 …</string>
+    <string name="note_need_photo">請先影相或者揀一張相 —— 筆記係由張相寫出嚟。</string>
+    <string name="key_hint">關鍵詞（純文字模型需要）：例如 舊鐵閘、油漆剝落</string>
+
+    <string name="c_model_library">模型庫</string>
+    <string name="model_vision_tag">睇得到相</string>
+    <string name="model_text_tag">純文字</string>
+    <string name="model_downloaded">已下載</string>
+    <string name="model_absent">未下載</string>
+    <string name="model_download_now">下載</string>
+    <string name="btn_delete_short">刪除</string>
+    <string name="c_storage">儲存空間</string>
+    <string name="storage_fmt">部機上嘅模型：%1$s · 可用空間：%2$s</string>
+    <string name="btn_wipe">刪除全部 app 資料</string>
+    <string name="wipe_confirm">確定刪除 app 儲存嘅全部筆記、相片、行過嘅格仔同模型檔？</string>
+    <string name="wipe_done">已刪除全部 app 資料。</string>
+    <string name="uninstall_note">卸載 app 會連模型一齊刪：模型只存喺 app 自己嘅空間，唔會放喺「下載」或任何共用資料夾。</string>
 </resources>

@@ -27,11 +27,11 @@
     <string name="btn_analyse">Analyse with Gemma</string>
     <string name="status_idle">Ready when you are.</string>
 
-    <string name="c_draft">4 · 1823 report</string>
+    <string name="c_draft">4 · Note</string>
     <string name="supp_hint">Anything to add? (optional)</string>
     <string name="btn_copy">Copy</string>
     <string name="btn_save">Save record</string>
-    <string name="bytes_fmt">UTF-8 bytes: %1$d / 1500</string>
+    <string name="bytes_fmt">UTF-8 bytes: %1$d / 600</string>
 
     <!-- Map tab -->
     <string name="c_map">Exploration map</string>
@@ -121,4 +121,31 @@
     <string name="t_need_photo">Take or pick a photo first.</string>
     <string name="t_exif_none">This photo has no GPS in its EXIF.</string>
     <string name="t_cleared">Records deleted.</string>
+
+    <!-- walk notes -->
+    <string name="c_generate">3 · Write the note</string>
+    <string name="btn_generate">Write the note</string>
+    <string name="mode_desc">Description</string>
+    <string name="mode_feel">Impression</string>
+    <string name="mode_note">Note</string>
+    <string name="mode_hint">Description = what is there · Impression = how it felt · Note = time, place, what to look up later.</string>
+    <string name="st_note_analysing">Gemma is looking at your photo on this device …</string>
+    <string name="st_vision_check">Checking that this build can really read a photo …</string>
+    <string name="note_need_photo">Take or pick a photo first — the note is written from it.</string>
+    <string name="key_hint">Keywords (text-only models need these): e.g. old iron gate, peeling paint</string>
+
+    <!-- model library -->
+    <string name="c_model_library">Model library</string>
+    <string name="model_vision_tag">sees photos</string>
+    <string name="model_text_tag">text only</string>
+    <string name="model_downloaded">downloaded</string>
+    <string name="model_absent">not downloaded</string>
+    <string name="model_download_now">Download</string>
+    <string name="btn_delete_short">Delete</string>
+    <string name="c_storage">Storage</string>
+    <string name="storage_fmt">Models on this phone: %1$s · free space: %2$s</string>
+    <string name="btn_wipe">Delete all app data</string>
+    <string name="wipe_confirm">Delete every note, photo, walked cell and model file stored by this app?</string>
+    <string name="wipe_done">All app data deleted.</string>
+    <string name="uninstall_note">Uninstalling the app removes the models too: they live in the app\'s own storage, never in Downloads or any shared folder.</string>
 </resources>
