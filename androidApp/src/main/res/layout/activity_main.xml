@@ -62,15 +62,14 @@
             <include layout="@layout/tab_report" />
         </ScrollView>
 
-        <ScrollView
+        <FrameLayout
             android:id="@+id/panelMap"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:fillViewport="true"
             android:visibility="gone">
 
             <include layout="@layout/tab_map" />
-        </ScrollView>
+        </FrameLayout>
 
         <ScrollView
             android:id="@+id/panelRecords"

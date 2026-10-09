@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="header_sub">本機公民記錄 · 開源 Gemma 喺你手機上運行</string>
+    <string name="header_sub">散步筆記 · 開源 Gemma 喺你手機上運行</string>
 
     <string name="tab_report">記錄</string>
     <string name="tab_map">地圖</string>
@@ -43,6 +43,8 @@
     <string name="btn_route_stop">停止記錄</string>
     <string name="map_legend">灰色＝未行過 · 黃邊＝再行一步 · 紅點＝已記錄問題。\n格仔喺你部機自繪，唔會上傳。</string>
     <string name="map_empty">開住記錄去行，霧就會一格一格散去（每格約 44 米）。</string>
+    <string name="btn_recenter">定位</string>
+    <string name="toast_no_fix">未有位置 —— 去「記錄」分頁撳「即刻用 GPS 定位」。</string>
 
     <string name="c_records">已儲存紀錄</string>
     <string name="empty">暫時未有紀錄。</string>

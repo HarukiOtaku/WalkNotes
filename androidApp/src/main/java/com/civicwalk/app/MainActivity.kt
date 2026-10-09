@@ -241,8 +241,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun wireTabs() {
         val bar = findViewById<TabLayout>(R.id.tabBar)
-        bar.addTab(bar.newTab().setText(R.string.tab_report))
+        // The map is the first page: walking is what you actually do with this app.
         bar.addTab(bar.newTab().setText(R.string.tab_map))
+        bar.addTab(bar.newTab().setText(R.string.tab_report))
         bar.addTab(bar.newTab().setText(R.string.tab_records))
         bar.addTab(bar.newTab().setText(R.string.tab_settings))
         bar.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
@@ -255,11 +256,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun showPanel(index: Int) {
         currentTab = index
-        val panels = intArrayOf(R.id.panelReport, R.id.panelMap, R.id.panelRecords, R.id.panelSettings)
+        val panels = intArrayOf(R.id.panelMap, R.id.panelReport, R.id.panelRecords, R.id.panelSettings)
         panels.forEachIndexed { i, id ->
             findViewById<View>(id).visibility = if (i == index) View.VISIBLE else View.GONE
         }
-        if (index == 1) {
+        if (index == 0) {
             if (mapMode == "real") initMap()
             renderFog()
             pushMapData()
@@ -276,6 +277,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.btnClearRecords).setOnClickListener { confirmClearRecords() }
         findViewById<MaterialButton>(R.id.btnAnalyse).setOnClickListener { generateNote() }
         btnRoute.setOnClickListener { toggleRoute() }
+        findViewById<MaterialButton>(R.id.btnRecenter).setOnClickListener { recenter() }
         btnMapReal.setOnClickListener { setMapMode("real") }
         btnMapGrid.setOnClickListener { setMapMode("grid") }
 
@@ -1220,6 +1222,7 @@ class MainActivity : AppCompatActivity() {
                         mapReady = true
                         buildMapLayers()
                         pushMapData()
+                        centerOnLastFix()
                     }
                 } catch (t: Throwable) { fallbackToGrid() }
             }
@@ -1321,6 +1324,46 @@ class MainActivity : AppCompatActivity() {
         } catch (t: Throwable) { /* layer missing on the very first call */ }
     }
 
+    /** Jump the camera to the last known fix, or to the first walked cell. */
+    private fun recenter() {
+        val map = mapRef
+        val p = currentPosOrLast()
+        if (map != null && p != null) {
+            map.cameraPosition = CameraPosition.Builder().target(LatLng(p[0], p[1])).zoom(16.5).build()
+            return
+        }
+        val first = cells.firstOrNull()
+        if (map != null && first != null) {
+            map.cameraPosition = CameraPosition.Builder()
+                .target(LatLng(cellKeyLat(first), cellKeyLon(first))).zoom(15.5).build()
+        } else {
+            toast(getString(R.string.toast_no_fix))
+        }
+    }
+
+    /** Centre the map on the last known fix when the map first appears, if we are allowed to. */
+    private fun centerOnLastFix() {
+        if (mapCentered) return
+        val map = mapRef ?: return
+        val p = currentPosOrLast() ?: return
+        map.cameraPosition = CameraPosition.Builder().target(LatLng(p[0], p[1])).zoom(16.0).build()
+        mapCentered = true
+    }
+
+    /** Either a fix we already have, or the OS's last known one (no new fix requested). */
+    private fun currentPosOrLast(): DoubleArray? {
+        currentPoint()?.let { return it }
+        if (!requireLocationPerm()) return null
+        return try {
+            val lm = getSystemService(LOCATION_SERVICE) as LocationManager
+            lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)?.let {
+                gpsLoc = doubleArrayOf(it.latitude, it.longitude)
+                tvPlace.text = "GPS %.5f, %.5f".format(it.latitude, it.longitude)
+                doubleArrayOf(it.latitude, it.longitude)
+            }
+        } catch (t: Throwable) { null }
+    }
+
     private fun setMapMode(mode: String) {
         mapMode = mode
         prefs.edit().putString("mapmode", mode).apply()
@@ -1330,7 +1373,7 @@ class MainActivity : AppCompatActivity() {
         if (real) {
             // Create the map only while its panel is on screen: MapLibre must not build a GL
             // surface inside a GONE panel with zero size.
-            if (currentTab == 1) initMap()
+            if (currentTab == 0) initMap()
             pushMapData()
         } else {
             renderFog()

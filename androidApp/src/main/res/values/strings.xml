@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">CivicWalk</string>
-    <string name="header_sub">On-device civic reporting · open-weight Gemma on your phone</string>
+    <string name="app_name">WalkNotes</string>
+    <string name="header_sub">A walking notebook · open-weight Gemma on your phone</string>
 
     <string name="tab_report">Report</string>
     <string name="tab_map">Map</string>
@@ -46,6 +46,9 @@
     <string name="btn_route_stop">Stop recording</string>
     <string name="map_legend">Grey = not walked yet · amber edge = one step further · red dot = a reported issue.\nThe grid is drawn on this phone and never uploaded.</string>
     <string name="map_empty">Walk with recording on and the fog lifts, one ~44 m cell at a time.</string>
+
+    <string name="btn_recenter">Recentre</string>
+    <string name="toast_no_fix">No position yet — use “Use GPS now” on the Note tab.</string>
 
     <!-- Records tab -->
     <string name="c_records">Saved records</string>
