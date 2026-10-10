@@ -3,7 +3,21 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="12dp">
+    android:padding="16dp">
+
+    <TextView
+        style="@style/PageTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/tab_records" />
+
+    <TextView
+        style="@style/Hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="14dp"
+        android:text="@string/header_sub" />
 
     <com.google.android.material.card.MaterialCardView
         style="@style/Card"
@@ -26,8 +40,10 @@
                 style="@style/Body"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:lineSpacingMultiplier="1.3"
-                android:text="@string/empty" />
+                android:lineSpacingMultiplier="1.35"
+                android:minHeight="72dp"
+                android:text="@string/empty"
+                android:textColor="@color/muted" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnClearRecords"

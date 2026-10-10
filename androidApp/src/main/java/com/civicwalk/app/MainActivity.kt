@@ -3,6 +3,7 @@ package com.civicwalk.app
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -27,6 +28,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.os.LocaleListCompat
 import androidx.exifinterface.media.ExifInterface
@@ -77,7 +79,7 @@ import kotlin.math.sqrt
  * description, an impression or a field note about it. The photo, the coordinates, the words and
  * the map of where you have walked never leave the phone.
  *
- * Four tabs: Note · Map · Records · Settings.
+ * Four tabs, map first, bottom bar.
  */
 class MainActivity : AppCompatActivity() {
 
@@ -1121,11 +1123,15 @@ class MainActivity : AppCompatActivity() {
             routeListener?.let { lm.removeUpdates(it) }
             routeListener = null
             btnRoute.text = getString(R.string.btn_route_start)
+            btnRoute.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.amber))
+            btnRoute.setTextColor(ContextCompat.getColor(this, R.color.ink))
             tvStatus.text = getString(R.string.st_route_stop)
             return
         }
 
         btnRoute.text = getString(R.string.btn_route_stop)
+        btnRoute.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.issue))
+        btnRoute.setTextColor(ContextCompat.getColor(this, R.color.white))
         val listener = object : LocationListener {
             override fun onLocationChanged(loc: Location) {
                 val k = cellKey(loc.latitude, loc.longitude)
