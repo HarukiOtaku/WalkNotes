@@ -170,4 +170,14 @@
     <string name="filter_nophoto">No photo</string>
     <string name="record_no_photo">No photo</string>
     <string name="t_export_fail">Export failed: %1$s</string>
+    <string name="search_hint">Search notes, place, date</string>
+    <string name="date_all">Any time</string>
+    <string name="date_today">Today</string>
+    <string name="date_week">7 days</string>
+    <string name="date_month">30 days</string>
+    <string name="pager_prev">Prev</string>
+    <string name="pager_next">Next</string>
+    <string name="pager_pos">%1$d / %2$d</string>
+    <string name="btn_save_edit">Save edits</string>
+    <string name="t_edited">Note updated.</string>
 </resources>

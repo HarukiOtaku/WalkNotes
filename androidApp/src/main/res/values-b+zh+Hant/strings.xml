@@ -161,4 +161,14 @@
     <string name="c_walk_notif">記錄緊嘅時候</string>
     <string name="walk_notif">記錄步行時顯示常駐通知</string>
     <string name="walk_notif_note">預設開。離開 app 都會繼續記。關掉之後，只喺 WalkNotes 開住先會記。</string>
+    <string name="search_hint">搜尋筆記、地點、日期</string>
+    <string name="date_all">全部日期</string>
+    <string name="date_today">今日</string>
+    <string name="date_week">7 日</string>
+    <string name="date_month">30 日</string>
+    <string name="pager_prev">上一則</string>
+    <string name="pager_next">下一則</string>
+    <string name="pager_pos">%1$d / %2$d</string>
+    <string name="btn_save_edit">儲存修改</string>
+    <string name="t_edited">已更新筆記。</string>
 </resources>

@@ -20,6 +20,16 @@
         android:layout_marginBottom="12dp"
         android:text="@string/header_sub" />
 
+    <EditText
+        android:id="@+id/etSearch"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginBottom="8dp"
+        android:hint="@string/search_hint"
+        android:importantForAutofill="no"
+        android:inputType="text"
+        android:textSize="14sp" />
+
     <com.google.android.material.button.MaterialButtonToggleGroup
         android:id="@+id/filterRecords"
         android:layout_width="match_parent"
@@ -51,6 +61,47 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="@string/filter_nophoto" />
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/filterDate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        app:selectionRequired="true"
+        app:singleSelection="true">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/dateAll"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/date_all" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/dateToday"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/date_today" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/dateWeek"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/date_week" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/dateMonth"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/date_month" />
     </com.google.android.material.button.MaterialButtonToggleGroup>
 
     <TextView

@@ -114,6 +114,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvRecords: TextView
     private lateinit var recordsList: LinearLayout
     private var recordsFilter = "all"
+    private var recordsDate = "all"
+    private var recordsQuery = ""
 
     private val REQ_EXPORT = 1005
     private val REQ_IMPORT = 1006
@@ -301,7 +303,27 @@ class MainActivity : AppCompatActivity() {
             }
             renderRecords()
         }
-        fogMap.onNoteTap = { i -> showNoteAt(i) }
+        fogMap.onNoteTap = { i -> showNotesFor(i) }
+        val dates = findViewById<MaterialButtonToggleGroup>(R.id.filterDate)
+        dates.check(R.id.dateAll)
+        dates.addOnButtonCheckedListener { _, id, checked ->
+            if (!checked) return@addOnButtonCheckedListener
+            recordsDate = when (id) {
+                R.id.dateToday -> "today"
+                R.id.dateWeek -> "week"
+                R.id.dateMonth -> "month"
+                else -> "all"
+            }
+            renderRecords()
+        }
+        findViewById<EditText>(R.id.etSearch).addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                recordsQuery = s?.toString()?.trim().orEmpty()
+                renderRecords()
+            }
+        })
         btnRoute.setOnClickListener { toggleRoute() }
         findViewById<MaterialButton>(R.id.btnRecenter).setOnClickListener { recenter() }
         btnMapReal.setOnClickListener { setMapMode("real") }
@@ -1134,12 +1156,18 @@ class MainActivity : AppCompatActivity() {
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
                 val has = o.optString("photo").isNotEmpty() && File(o.optString("photo")).isFile
-                val ok = when (recordsFilter) {
+                val photoOk = when (recordsFilter) {
                     "photo" -> has
                     "nophoto" -> !has
                     else -> true
                 }
-                if (ok) shown.add(i)
+                val dateOk = dateMatches(o.optString("time_local"))
+                val q = recordsQuery.lowercase(Locale.US)
+                val searchOk = q.isEmpty() || listOf(
+                    o.optString("note"), o.optString("place_label"),
+                    o.optString("time_local"), o.optString("user_words")
+                ).any { it.lowercase(Locale.US).contains(q) }
+                if (photoOk && dateOk && searchOk) shown.add(i)
             }
             if (shown.isEmpty()) {
                 tvRecords.visibility = View.VISIBLE
@@ -1167,7 +1195,7 @@ class MainActivity : AppCompatActivity() {
                 row.findViewById<TextView>(R.id.rowSnippet).text =
                     o.optString("note").lineSequence().firstOrNull()?.take(80)
                         ?: getString(R.string.record_no_photo)
-                row.setOnClickListener { showNoteAt(i) }
+                row.setOnClickListener { showNotesFor(i) }
                 recordsList.addView(row)
             }
         } catch (_: Throwable) {
@@ -1290,17 +1318,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun issueMarks(): List<NotePin> = try {
-        val out = ArrayList<NotePin>()
+        val groups = LinkedHashMap<String, ArrayList<Int>>()
         if (recordsFile().isFile) {
             val arr = JSONArray(recordsFile().readText())
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
-                if (!o.isNull("lat") && !o.isNull("lon")) {
-                    out.add(NotePin(o.getDouble("lat"), o.getDouble("lon"), 0xFF2F7D52.toInt(), i))
-                }
+                if (o.isNull("lat") || o.isNull("lon")) continue
+                val k = cellKey(o.getDouble("lat"), o.getDouble("lon"))
+                groups.getOrPut(k) { ArrayList() }.add(i)
             }
         }
-        out
+        groups.map { (k, idxs) ->
+            val newest = idxs.maxOrNull() ?: 0
+            NotePin(cellKeyLat(k), cellKeyLon(k), 0xFF2F7D52.toInt(), newest, idxs.size)
+        }
     } catch (_: Throwable) { emptyList() }
 
     private fun renderFog() {
@@ -1364,7 +1395,7 @@ class MainActivity : AppCompatActivity() {
                             val hits = map.queryRenderedFeatures(box, "notes-dot")
                             if (hits.isNotEmpty()) {
                                 val i = hits[0].getNumberProperty("i")?.toInt()
-                                if (i != null) showNoteAt(i)
+                                if (i != null) showNotesFor(i)
                                 true
                             } else false
                         }
@@ -1596,30 +1627,93 @@ class MainActivity : AppCompatActivity() {
         startActivityForResult(i, REQ_IMPORT)
     }
 
-    private fun showNoteAt(index: Int) {
-        try {
+    private fun showNotesFor(index: Int) {
+        val ids = notesInCell(index)
+        val start = ids.indexOf(index).coerceAtLeast(0)
+        showNotes(ids, start)
+    }
+
+    private fun notesInCell(index: Int): List<Int> {
+        return try {
             val arr = JSONArray(recordsFile().readText())
-            if (index < 0 || index >= arr.length()) return
+            if (index < 0 || index >= arr.length()) return listOf(index)
             val o = arr.getJSONObject(index)
+            if (o.isNull("lat") || o.isNull("lon")) return listOf(index)
+            val k = cellKey(o.getDouble("lat"), o.getDouble("lon"))
+            (0 until arr.length()).filter { i ->
+                val x = arr.getJSONObject(i)
+                !x.isNull("lat") && !x.isNull("lon") &&
+                    cellKey(x.getDouble("lat"), x.getDouble("lon")) == k
+            }.sortedByDescending { it }
+        } catch (_: Throwable) { listOf(index) }
+    }
+
+    private fun dateMatches(stamp: String): Boolean {
+        if (recordsDate == "all") return true
+        if (stamp.isEmpty()) return true
+        val t = try { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).parse(stamp)?.time ?: return true } catch (_: Throwable) { return true }
+        val now = System.currentTimeMillis()
+        val day = 86_400_000L
+        return when (recordsDate) {
+            "today" -> {
+                val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                fmt.format(Date(t)) == fmt.format(Date(now))
+            }
+            "week" -> now - t <= 7 * day
+            "month" -> now - t <= 30 * day
+            else -> true
+        }
+    }
+
+    private fun showNotes(ids: List<Int>, start: Int) {
+        if (ids.isEmpty()) return
+        var pos = start.coerceIn(0, ids.lastIndex)
+        try {
             val view = layoutInflater.inflate(R.layout.dialog_note, null)
             val img = view.findViewById<ImageView>(R.id.dlgPhoto)
-            val path = o.optString("photo")
-            if (path.isNotEmpty() && File(path).isFile) {
-                img.visibility = View.VISIBLE
-                img.setImageBitmap(BitmapFactory.decodeFile(path))
-                img.setOnClickListener {
-                    img.setScaleType(
-                        if (img.scaleType == ImageView.ScaleType.CENTER_CROP)
-                            ImageView.ScaleType.FIT_CENTER else ImageView.ScaleType.CENTER_CROP
-                    )
-                }
-            } else img.visibility = View.GONE
-            view.findViewById<TextView>(R.id.dlgMeta).text =
-                "[${modeLabel(o.optString("mode"))}]  ${o.optString("time_local")}\n${o.optString("place_label")}"
-            view.findViewById<TextView>(R.id.dlgNote).text = o.optString("note")
+            val meta = view.findViewById<TextView>(R.id.dlgMeta)
+            val note = view.findViewById<EditText>(R.id.dlgNote)
+            val pager = view.findViewById<View>(R.id.dlgPager)
+            val posTv = view.findViewById<TextView>(R.id.dlgPos)
+            fun bind() {
+                val arr = JSONArray(recordsFile().readText())
+                val o = arr.getJSONObject(ids[pos])
+                val path = o.optString("photo")
+                if (path.isNotEmpty() && File(path).isFile) {
+                    img.visibility = View.VISIBLE
+                    img.setImageBitmap(BitmapFactory.decodeFile(path))
+                } else img.visibility = View.GONE
+                meta.text = "[${modeLabel(o.optString("mode"))}]  ${o.optString("time_local")}\n${o.optString("place_label")}"
+                note.setText(o.optString("note"))
+                pager.visibility = if (ids.size > 1) View.VISIBLE else View.GONE
+                posTv.text = getString(R.string.pager_pos, pos + 1, ids.size)
+            }
+            view.findViewById<MaterialButton>(R.id.dlgPrev).setOnClickListener {
+                pos = (pos - 1 + ids.size) % ids.size
+                bind()
+            }
+            view.findViewById<MaterialButton>(R.id.dlgNext).setOnClickListener {
+                pos = (pos + 1) % ids.size
+                bind()
+            }
+            img.setOnClickListener {
+                img.scaleType = if (img.scaleType == ImageView.ScaleType.CENTER_CROP)
+                    ImageView.ScaleType.FIT_CENTER else ImageView.ScaleType.CENTER_CROP
+            }
+            bind()
             AlertDialog.Builder(this)
                 .setView(view)
-                .setPositiveButton(android.R.string.ok, null)
+                .setPositiveButton(R.string.btn_save_edit) { _, _ ->
+                    try {
+                        val arr = JSONArray(recordsFile().readText())
+                        arr.getJSONObject(ids[pos]).put("note", note.text.toString())
+                        recordsFile().writeText(arr.toString())
+                        renderRecords()
+                        renderFog()
+                        toast(getString(R.string.t_edited))
+                    } catch (t: Throwable) { toast(t.message ?: "save") }
+                }
+                .setNegativeButton(android.R.string.ok, null)
                 .show()
         } catch (_: Throwable) { }
     }

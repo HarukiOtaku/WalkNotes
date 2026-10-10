@@ -12,7 +12,7 @@ import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 
-class NotePin(val lat: Double, val lon: Double, val color: Int, val index: Int)
+class NotePin(val lat: Double, val lon: Double, val color: Int, val index: Int, val count: Int = 1)
 
 /**
  * Fog-of-war map, drawn entirely on the device (no tiles, no network).
@@ -119,7 +119,7 @@ class FogMapView @JvmOverloads constructor(
             canvas.drawCircle(x, y, 20f, paint)
             paint.color = pin.color
             canvas.drawCircle(x, y, 17f, paint)
-            canvas.drawText("${pin.index + 1}", x, y + 9f, text)
+            canvas.drawText(if (pin.count > 1) "${pin.count}" else "${pin.index + 1}", x, y + 9f, text)
             hit.add(floatArrayOf(x, y) to pin.index)
         }
     }

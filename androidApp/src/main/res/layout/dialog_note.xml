@@ -5,6 +5,38 @@
     android:orientation="vertical"
     android:padding="8dp">
 
+    <LinearLayout
+        android:id="@+id/dlgPager"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/dlgPrev"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:text="@string/pager_prev" />
+
+        <TextView
+            android:id="@+id/dlgPos"
+            style="@style/Hint"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:textStyle="bold" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/dlgNext"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:text="@string/pager_next" />
+    </LinearLayout>
+
     <ImageView
         android:id="@+id/dlgPhoto"
         android:layout_width="match_parent"
@@ -21,11 +53,14 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 
-    <TextView
+    <EditText
         android:id="@+id/dlgNote"
-        style="@style/Body"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:textIsSelectable="true" />
+        android:gravity="top|start"
+        android:importantForAutofill="no"
+        android:inputType="textMultiLine"
+        android:minLines="4"
+        android:textSize="14sp" />
 </LinearLayout>
