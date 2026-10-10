@@ -171,4 +171,17 @@
     <string name="pager_pos">%1$d / %2$d</string>
     <string name="btn_save_edit">保存修改</string>
     <string name="t_edited">已更新笔记。</string>
+    <string name="tip_dismiss">×</string>
+    <string name="map_tips">偶尔在地图上出提示</string>
+    <string name="map_tips_note">默认开。地图上方会偶尔出现一句——规则、笑话、或者鼓励你多走路。点 × 关掉。不想看就在这里关闭。</string>
+    <string-array name="map_tips_pool">
+        <item>灰色雾＝未走过。绿点＝已写笔记。</item>
+        <item>点绿点看笔记。靠近的会合成一点，可以左右翻。</item>
+        <item>再走几步，大约 44 米就亮多一格。</item>
+        <item>地图现在很害羞，走过才肯透出街道。</item>
+        <item>GPS 说你在这，雾说还没见到你。谁在说谎？</item>
+        <item>多走一条街，雾就少一格。像 RPG。</item>
+        <item>笔记只在你的手机。街图只是背景。</item>
+        <item>迷路就点「定位」。雾不会骗你走过哪里。</item>
+    </string-array>
 </resources>

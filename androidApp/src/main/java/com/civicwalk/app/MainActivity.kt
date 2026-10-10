@@ -116,6 +116,7 @@ class MainActivity : AppCompatActivity() {
     private var recordsFilter = "all"
     private var recordsDate = "all"
     private var recordsQuery = ""
+    private var tipShownThisSession = false
 
     private val REQ_EXPORT = 1005
     private val REQ_IMPORT = 1006
@@ -280,6 +281,7 @@ class MainActivity : AppCompatActivity() {
             if (mapMode == "real") initMap()
             renderFog()
             pushMapData()
+            maybeShowTip()
         }
     }
 
@@ -326,6 +328,7 @@ class MainActivity : AppCompatActivity() {
         })
         btnRoute.setOnClickListener { toggleRoute() }
         findViewById<MaterialButton>(R.id.btnRecenter).setOnClickListener { recenter() }
+        findViewById<MaterialButton>(R.id.btnTipClose).setOnClickListener { dismissTip() }
         btnMapReal.setOnClickListener { setMapMode("real") }
         btnMapGrid.setOnClickListener { setMapMode("grid") }
 
@@ -402,6 +405,12 @@ class MainActivity : AppCompatActivity() {
                     startWalkInApp()
                 }
             }
+        }
+        val tipSw = findViewById<MaterialSwitch>(R.id.switchMapTips)
+        tipSw.isChecked = prefs.getBoolean("map_tips", true)
+        tipSw.setOnCheckedChangeListener { _, on ->
+            prefs.edit().putBoolean("map_tips", on).apply()
+            if (!on) hideTip()
         }
     }
 
@@ -1606,6 +1615,40 @@ class MainActivity : AppCompatActivity() {
 
     private fun kb(bytes: Long): String =
         if (bytes >= 1_000_000) "%.1f MB".format(bytes / 1_000_000.0) else "${bytes / 1024} KB"
+
+    private fun maybeShowTip() {
+        val bar = findViewById<View>(R.id.tipBar)
+        if (!prefs.getBoolean("map_tips", true)) {
+            bar.visibility = View.GONE
+            return
+        }
+        if (tipShownThisSession) return
+        val now = System.currentTimeMillis()
+        val last = prefs.getLong("map_tip_last", 0L)
+        if (last != 0L && now - last < 2 * 60 * 60 * 1000L) return
+        val pool = resources.getStringArray(R.array.map_tips_pool)
+        if (pool.isEmpty()) return
+        val i = (prefs.getInt("map_tip_i", -1) + 1) % pool.size
+        findViewById<TextView>(R.id.tvTip).text = pool[i]
+        bar.visibility = View.VISIBLE
+        tipShownThisSession = true
+        prefs.edit().putInt("map_tip_i", i).putLong("map_tip_last", now).apply()
+        bar.removeCallbacks(hideTipRunnable)
+        bar.postDelayed(hideTipRunnable, 12_000L)
+    }
+
+    private val hideTipRunnable = Runnable { hideTip() }
+
+    private fun hideTip() {
+        val bar = findViewById<View>(R.id.tipBar)
+        bar.removeCallbacks(hideTipRunnable)
+        bar.visibility = View.GONE
+    }
+
+    private fun dismissTip() {
+        hideTip()
+        prefs.edit().putLong("map_tip_last", System.currentTimeMillis()).apply()
+    }
 
     private fun toast(m: String) = Toast.makeText(this, m, Toast.LENGTH_SHORT).show()
 

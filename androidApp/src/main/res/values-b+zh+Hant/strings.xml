@@ -171,4 +171,17 @@
     <string name="pager_pos">%1$d / %2$d</string>
     <string name="btn_save_edit">儲存修改</string>
     <string name="t_edited">已更新筆記。</string>
+    <string name="tip_dismiss">×</string>
+    <string name="map_tips">間唔中喺地圖出提示</string>
+    <string name="map_tips_note">預設開。地圖上面會間唔中出一句——規則、笑話、或者叫你行多啲。撳 × 取消。唔想見到就喺呢度關掉。</string>
+    <string-array name="map_tips_pool">
+        <item>灰色霧＝未行過。綠點＝已寫筆記。</item>
+        <item>撳綠點睇筆記。近嘅會合成一點，可以左右撳。</item>
+        <item>再行多幾步，大約 44 米就亮多一格。</item>
+        <item>地圖而家好害羞，行過先肯透街。</item>
+        <item>GPS 話你喺度，霧話未見到你。邊個講大話？</item>
+        <item>多行一條街，霧就少一格。好似 RPG。</item>
+        <item>筆記只喺你部機。街圖只係背景。</item>
+        <item>迷咗就撳「定位」。霧唔會呃你行過邊。</item>
+    </string-array>
 </resources>

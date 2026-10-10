@@ -180,4 +180,17 @@
     <string name="pager_pos">%1$d / %2$d</string>
     <string name="btn_save_edit">Save edits</string>
     <string name="t_edited">Note updated.</string>
+    <string name="tip_dismiss">×</string>
+    <string name="map_tips">Occasional map tips</string>
+    <string name="map_tips_note">On by default. A short tip appears at the top of the map now and then — rules, a joke, or a nudge to walk. Tap × to dismiss. Turn this off to stop them.</string>
+    <string-array name="map_tips_pool">
+        <item>Grey fog = not walked yet. Green dot = a note you saved.</item>
+        <item>Tap a green dot to read it. Nearby notes share one pin — swipe between them.</item>
+        <item>Walk a bit more. Every ~44 m lifts another cell out of the fog.</item>
+        <item>The map looks shy until you walk it. That is the whole trick.</item>
+        <item>GPS says you are here. The fog says prove it.</item>
+        <item>One more street. The fog hates that.</item>
+        <item>Your notes stay on this phone. The street tiles are only a backdrop.</item>
+        <item>Lost? Recentre. The fog still only shows where you actually walked.</item>
+    </string-array>
 </resources>

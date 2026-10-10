@@ -106,6 +106,20 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/walk_notif_note" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switchMapTips"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:minHeight="48dp"
+                android:text="@string/map_tips" />
+
+            <TextView
+                style="@style/Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/map_tips_note" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
