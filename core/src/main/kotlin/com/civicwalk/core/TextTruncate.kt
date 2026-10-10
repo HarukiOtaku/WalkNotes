@@ -2,7 +2,8 @@ package com.civicwalk.core
 
 /**
  * UTF-8 safe truncation so a length limit never splits a Chinese character.
- * Used for on-device note drafts.
+ * The helper is used for on-device note drafts (WalkNotes caps a saved note at
+ * 600 bytes; an earlier CivicWalk prototype used 1500 bytes for a web form).
  */
 object TextTruncate {
     fun truncateUtf8(s: String, maxBytes: Int): String {
