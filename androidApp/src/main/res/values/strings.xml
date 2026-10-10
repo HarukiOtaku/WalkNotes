@@ -211,4 +211,14 @@
     <string name="t_video_fail">Could not make a video: %1$s</string>
     <string name="share_video">WalkNotes path</string>
     <string name="replay_playing">Playing %1$s</string>
+    <string name="c_input">What the model reads</string>
+    <string name="input_hint">Keywords or a short line — e.g. old iron gate, peeling paint. Text-only models write from this. Vision models use it as extra context.</string>
+    <string name="cb_look_photo">Look at the photo when writing</string>
+    <string name="draft_hint">This box is the output — the model writes here. You can edit it before saving. It is not the input.</string>
+    <string name="gen_help_idle">Load a model in Settings first. Gemma 4 E2B can look at the photo. The smaller models cannot — they only read the keywords you type.</string>
+    <string name="gen_help_vision">This model can see the photo. Tick “Look at the photo” and it writes from the picture + your keywords + time/place. Untick it and it only uses your keywords.</string>
+    <string name="gen_help_vision_off">This model loaded as text-only (the photo check failed: %1$s). Type keywords. It will not look at the picture.</string>
+    <string name="gen_help_text">This model cannot see photos. Type what is there in the keywords box (objects, colours, materials). Time and place are added automatically. The big box below is the output, not the input.</string>
+    <string name="note_need_words">This model cannot see the photo. Type a few keywords above first, or switch on “Look at the photo” with Gemma 4 E2B.</string>
+    <string name="st_loaded_text_only">Loaded on %1$s as text-only. Photo check failed: %2$s</string>
 </resources>

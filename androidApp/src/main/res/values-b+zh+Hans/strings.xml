@@ -202,4 +202,14 @@
     <string name="t_video_fail">无法制作影片：%1$s</string>
     <string name="share_video">WalkNotes 路线</string>
     <string name="replay_playing">正在回放 %1$s</string>
+    <string name="c_input">模型会看的内容</string>
+    <string name="input_hint">关键词或一句话 —— 例如 旧铁闸、油漆剥落。纯文字模型靠这里写。看得见图的模型当作补充。</string>
+    <string name="cb_look_photo">写的时候看相片</string>
+    <string name="draft_hint">这一格是输出：模型写出来的笔记，你可以改完再存。不是输入。</string>
+    <string name="gen_help_idle">先去设置载入模型。Gemma 4 E2B 看得见图。较小的两款看不见图，只看你打的关键词。</string>
+    <string name="gen_help_vision">这款模型看得见图。勾选「看相片」就会用相片＋你打的字＋时间地点。不勾就只用你打的字。</string>
+    <string name="gen_help_vision_off">这款模型现在只当纯文字（看图测试失败：%1$s）。打关键词。不会看相片。</string>
+    <string name="gen_help_text">这款模型看不见相片。在关键词里写看到什么（物件、颜色、材质）。时间地点会自动加上。下面大格是输出，不是输入。</string>
+    <string name="note_need_words">这款模型看不见相片。先在上面打几个关键词，或用 Gemma 4 E2B 并打开「看相片」。</string>
+    <string name="st_loaded_text_only">已用 %1$s 载入（纯文字）。看图测试失败：%2$s</string>
 </resources>

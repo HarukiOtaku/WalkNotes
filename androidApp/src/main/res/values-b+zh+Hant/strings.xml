@@ -202,4 +202,14 @@
     <string name="t_video_fail">整唔到影片：%1$s</string>
     <string name="share_video">WalkNotes 路線</string>
     <string name="replay_playing">正在回放 %1$s</string>
+    <string name="c_input">模型會睇嘅嘢</string>
+    <string name="input_hint">關鍵詞或者一句 —— 例如 舊鐵閘、油漆剝落。純文字模型就靠呢度寫。睇得相嘅模型當補充。</string>
+    <string name="cb_look_photo">寫嘅時候睇埋相片</string>
+    <string name="draft_hint">呢格係輸出：模型寫出嚟嘅筆記，你可以改完再存。唔係輸入。</string>
+    <string name="gen_help_idle">先去設定載入模型。Gemma 4 E2B 睇得相。細啲嗰兩隻睇唔到相，只會睇你打嘅關鍵詞。</string>
+    <string name="gen_help_vision">呢隻模型睇得相。剔「睇埋相片」就會用相＋你打嘅字＋時間地點。唔剔就淨係用你打嘅字。</string>
+    <string name="gen_help_vision_off">呢隻模型而家只當純文字（睇相測試失敗：%1$s）。打關鍵詞。唔會睇張相。</string>
+    <string name="gen_help_text">呢隻模型睇唔到相。喺關鍵詞度寫見到咩（物件、顏色、材質）。時間地點會自動加。下面大格係輸出，唔係輸入。</string>
+    <string name="note_need_words">呢隻模型睇唔到相。上面先打幾個關鍵詞，或者用 Gemma 4 E2B 再開「睇埋相片」。</string>
+    <string name="st_loaded_text_only">已用 %1$s 載入（純文字）。睇相測試失敗：%2$s</string>
 </resources>

@@ -101,6 +101,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var etNote: EditText
     private lateinit var tvBytes: TextView
     private lateinit var etSupp: EditText
+    private lateinit var tvGenHelp: TextView
+    private lateinit var cbLookPhoto: MaterialCheckBox
 
     // map tab
     private lateinit var fogMap: FogMapView
@@ -242,6 +244,9 @@ class MainActivity : AppCompatActivity() {
         etNote = findViewById(R.id.etDraft)
         tvBytes = findViewById(R.id.tvBytes)
         etSupp = findViewById(R.id.etSupp)
+        tvGenHelp = findViewById(R.id.tvGenHelp)
+        cbLookPhoto = findViewById(R.id.cbLookPhoto)
+        cbLookPhoto.setOnCheckedChangeListener { _, _ -> updateGenHelp() }
 
         fogMap = findViewById(R.id.fogMap)
         mapContainer = findViewById(R.id.mapContainer)
@@ -684,24 +689,29 @@ class MainActivity : AppCompatActivity() {
                     val cfg = EngineConfig(
                         modelPath = f.absolutePath,
                         backend = backend,
-                        visionBackend = backend,
+                        visionBackend = if (entry.vision) backend else null,
                         audioBackend = backend,
+                        maxNumTokens = 2048,
+                        maxNumImages = if (entry.vision) 4 else 0,
                         cacheDir = cacheDir.path
                     )
                     e = Engine(cfg)
                     e.initialize()
                     if (loadCancelled) { try { e.close() } catch (_: Throwable) {}; break }
                     loadPhase = getString(if (entry.vision) R.string.st_vision_check else R.string.st_verify)
-                    if (smokeTest(e, entry)) {
+                    val probe = smokeTest(e, entry)
+                    if (probe.textOk) {
                         sharedEngine = e
                         sharedBackend = if (useGpu) "GPU" else "CPU"
                         sharedModelLabel = entry.label
+                        sharedCanSeePhoto = probe.visionOk
+                        sharedVisionError = probe.visionErr
                         ok = true
                         how = sharedBackend
-                        e = null                       // keep it open
+                        e = null
                         break
                     }
-                    lastError = "the model initialised but could not generate a reply"
+                    lastError = probe.textErr.ifEmpty { "the model initialised but could not generate a reply" }
                 } catch (t: Throwable) {
                     lastError = t.message ?: "unknown"
                     if (lastError.contains("OpenCL", ignoreCase = true)) {
@@ -719,10 +729,15 @@ class MainActivity : AppCompatActivity() {
                 when {
                     loadCancelled -> tvStatus.text = getString(R.string.st_cancelled)
                     ok -> {
-                        tvStatus.text = getString(
-                            if (how == "GPU") R.string.st_loaded_gpu else R.string.st_loaded_cpu
-                        )
+                        val cat = ModelCatalog.entries.firstOrNull { it.label == sharedModelLabel }
+                        tvStatus.text = when {
+                            cat?.vision == true && !sharedCanSeePhoto ->
+                                getString(R.string.st_loaded_text_only, how, sharedVisionError.ifEmpty { "?" })
+                            how == "GPU" -> getString(R.string.st_loaded_gpu)
+                            else -> getString(R.string.st_loaded_cpu)
+                        }
                         renderEngine()
+                        updateGenHelp()
                     }
                     else -> tvStatus.text =
                         getString(R.string.st_load_failed, lastError.ifEmpty { "unknown" })
@@ -737,21 +752,37 @@ class MainActivity : AppCompatActivity() {
      * pushes a generated PNG through the image path, because the vision encoder is a separate
      * graph and can fail on its own.
      */
-    private fun smokeTest(e: Engine, entry: ModelEntry): Boolean = try {
-        e.createSession().use { s ->
-            val inputs = ArrayList<InputData>()
-            inputs.add(InputData.Text("Reply with one short word."))
-            if (entry.vision) inputs.add(InputData.Image(tinyPng()))
-            s.generateContent(inputs)
-            true
-        }
-    } catch (t: Throwable) { false }
+    private class Smoke(val textOk: Boolean, val textErr: String, val visionOk: Boolean, val visionErr: String)
 
-    private fun tinyPng(): ByteArray {
-        val bmp = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888)
+    private fun smokeTest(e: Engine, entry: ModelEntry): Smoke {
+        try {
+            e.createSession().use { s ->
+                val r = s.generateContent(listOf(InputData.Text("Reply with OK.")))
+                if (r.isNullOrBlank()) return Smoke(false, "empty reply", false, "")
+            }
+        } catch (t: Throwable) {
+            return Smoke(false, t.message ?: t.javaClass.simpleName, false, "")
+        }
+        if (!entry.vision) return Smoke(true, "", false, "")
+        return try {
+            e.createSession().use { s ->
+                val inputs = ArrayList<InputData>()
+                inputs.add(InputData.Text("One word for the colour."))
+                inputs.add(InputData.Image(probeJpeg()))
+                s.generateContent(inputs)
+            }
+            Smoke(true, "", true, "")
+        } catch (t: Throwable) {
+            Smoke(true, "", false, t.message ?: t.javaClass.simpleName)
+        }
+    }
+
+    private fun probeJpeg(): ByteArray {
+        val bmp = Bitmap.createBitmap(256, 256, Bitmap.Config.ARGB_8888)
         Canvas(bmp).drawColor(android.graphics.Color.rgb(47, 125, 82))
         val out = ByteArrayOutputStream()
-        bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+        bmp.compress(Bitmap.CompressFormat.JPEG, 85, out)
+        bmp.recycle()
         return out.toByteArray()
     }
 
@@ -764,6 +795,8 @@ class MainActivity : AppCompatActivity() {
                     try { sharedEngine?.close() } catch (_: Throwable) {}
                     sharedEngine = null
                     sharedModelLabel = ""
+                    sharedCanSeePhoto = false
+                    sharedVisionError = ""
                 }
                 modelTarget(entry).delete()
                 modelPartial(entry).delete()
@@ -787,6 +820,8 @@ class MainActivity : AppCompatActivity() {
         try { sharedEngine?.close() } catch (_: Throwable) {}
         sharedEngine = null
         sharedModelLabel = ""
+        sharedCanSeePhoto = false
+        sharedVisionError = ""
         modelFiles().forEach { it.delete() }
         File(filesDir, "records.json").delete()
         File(filesDir, "cells.json").delete()
@@ -817,6 +852,36 @@ class MainActivity : AppCompatActivity() {
             if (e == null) getString(R.string.engine_off)
             else getString(R.string.engine_on, "$sharedModelLabel / $sharedBackend")
         )
+        updateGenHelp()
+    }
+
+    private fun wantsPhoto(): Boolean = cbLookPhoto.isChecked && sharedCanSeePhoto
+
+    private fun updateGenHelp() {
+        val entry = ModelCatalog.entries.firstOrNull { it.label == sharedModelLabel }
+        when {
+            sharedEngine == null -> {
+                tvGenHelp.setText(R.string.gen_help_idle)
+                cbLookPhoto.isEnabled = false
+                cbLookPhoto.isChecked = false
+            }
+            sharedCanSeePhoto -> {
+                val wasOff = !cbLookPhoto.isEnabled
+                tvGenHelp.setText(R.string.gen_help_vision)
+                cbLookPhoto.isEnabled = true
+                if (wasOff) cbLookPhoto.isChecked = true
+            }
+            entry?.vision == true -> {
+                tvGenHelp.text = getString(R.string.gen_help_vision_off, sharedVisionError.ifEmpty { "?" })
+                cbLookPhoto.isEnabled = false
+                cbLookPhoto.isChecked = false
+            }
+            else -> {
+                tvGenHelp.setText(R.string.gen_help_text)
+                cbLookPhoto.isEnabled = false
+                cbLookPhoto.isChecked = false
+            }
+        }
     }
 
     // ----------------------------------------------------------------- photo
@@ -1049,19 +1114,25 @@ class MainActivity : AppCompatActivity() {
     private fun buildPrompt(entry: ModelEntry): String {
         val stamps = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date())
         val userWords = etSupp.text.toString().trim()
+        val look = wantsPhoto()
         val instruction = when (noteMode()) {
-            "desc" -> "Describe only what is actually in the photo: objects, materials, colours, " +
-                "numbers, state of repair. No feelings, no opinions."
-            "feel" -> "Write a short first-person impression of this place: what it recalls, what it " +
-                "made you feel. Stay specific to what is in the photo."
-            else -> "Write a compact field note: the time, the place, what can be seen, and one thing " +
-                "worth looking up or coming back to later."
+            "desc" -> if (look)
+                "Describe only what is actually in the photo: objects, materials, colours, numbers, state of repair. No feelings, no opinions."
+            else
+                "Describe only what the user named in their keywords: objects, materials, colours, state. No feelings. Do not invent a scene."
+            "feel" -> if (look)
+                "Write a short first-person impression of this place, tied to what is in the photo."
+            else
+                "Write a short first-person impression from the user's keywords only. Do not invent a scene."
+            else -> if (look)
+                "Write a compact field note: the time, the place, what can be seen, and one thing worth looking up later."
+            else
+                "Write a compact field note from the time, place and the user's keywords. Do not invent streets or objects."
         }
-        val grounding = if (entry.vision)
-            "A photo taken by the user is attached; the note must be grounded in what is visible in it."
+        val grounding = if (look)
+            "A photo is attached; the note must be grounded in what is visible in it. Keywords are extra context."
         else
-            "You cannot see any image. Base the note strictly on the user's own words below; if they " +
-                "are empty, keep it to the time and place only."
+            "You cannot see any image. Base the note strictly on the user's keywords below plus time and place. If keywords are empty, write only time and place."
         return """
             You are the on-device writer of a Hong Kong walking notebook. The user is out walking and
             has photographed something they passed.
@@ -1082,8 +1153,12 @@ class MainActivity : AppCompatActivity() {
         val e = sharedEngine ?: run { toast(getString(R.string.t_need_model)); return }
         val entry = ModelCatalog.entries.firstOrNull { it.label == sharedModelLabel } ?: ModelCatalog.default()
         val photo = archiveFile
-        if (entry.vision && (photo == null || !photo.isFile)) {
+        val look = wantsPhoto()
+        if (look && (photo == null || !photo.isFile)) {
             toast(getString(R.string.note_need_photo)); return
+        }
+        if (!look && etSupp.text.toString().trim().isEmpty()) {
+            toast(getString(R.string.note_need_words)); return
         }
         if (busy) return
 
@@ -1111,7 +1186,7 @@ class MainActivity : AppCompatActivity() {
                 e.createSession().use { s ->
                     val inputs = ArrayList<InputData>()
                     inputs.add(InputData.Text(prompt))
-                    if (entry.vision && photo != null) inputs.add(InputData.Image(photo.readBytes()))
+                    if (look && photo != null) inputs.add(InputData.Image(photo.readBytes()))
                     text = s.generateContent(inputs)
                 }
             } catch (t: Throwable) {
@@ -1993,6 +2068,8 @@ class MainActivity : AppCompatActivity() {
         @Volatile private var sharedEngine: Engine? = null
         @Volatile private var sharedBackend: String = ""
         @Volatile private var sharedModelLabel: String = ""
+        @Volatile private var sharedCanSeePhoto: Boolean = false
+        @Volatile private var sharedVisionError: String = ""
 
         /** Free vector tiles, no API key. */
         private const val MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty"
