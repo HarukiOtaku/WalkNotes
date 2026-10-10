@@ -11,8 +11,8 @@ android {
         applicationId = "com.civicwalk.app"
         minSdk = 26          // LiteRT-LM requires Android 8.0+
         targetSdk = 35
-        versionCode = 16
-        versionName = "0.4.11"
+        versionCode = 17
+        versionName = "0.4.12"
         // The prototype target is one modern phone (Snapdragon 8 Gen 2, arm64).
         // Every extra ABI adds ~10 MB of LiteRT native libraries to the APK.
         ndk {
