@@ -212,4 +212,13 @@
     <string name="gen_help_text">呢隻模型睇唔到相。喺關鍵詞度寫見到咩（物件、顏色、材質）。時間地點會自動加。下面大格係輸出，唔係輸入。</string>
     <string name="note_need_words">呢隻模型睇唔到相。上面先打幾個關鍵詞，或者用 Gemma 4 E2B 再開「睇埋相片」。</string>
     <string name="st_loaded_text_only">已用 %1$s 載入（純文字）。睇相測試失敗：%2$s</string>
+    <string name="c_hf">Hugging Face 權杖</string>
+    <string name="hf_token_hint">hf_… Read token（只存呢部機）</string>
+    <string name="btn_save_hf">儲存權杖</string>
+    <string name="hf_token_note">Gemma 4 E2B 唔使 token。Gemma 3 1B／270M 要閘：用瀏覽器登入 huggingface.co 同意 Gemma 授權，開 Read token，貼呢度。唔好喺 Discord 傳 token。</string>
+    <string name="hf_saved">已存喺呢部機。</string>
+    <string name="dl_gated">Hugging Face 擋住檔（Gemma 授權）。瀏覽器同意授權，設定入 Read token，再下載。Gemma 4 E2B 唔使 token。</string>
+    <string name="dl_missing">Hugging Face 搵唔到呢個檔（HTTP 404）。</string>
+    <string name="dl_http">下載失敗：HTTP %1$d</string>
+    <string name="dl_size">檔案大細唔啱：收到 %1$d bytes，應該 %2$d。已刪壞檔。</string>
 </resources>

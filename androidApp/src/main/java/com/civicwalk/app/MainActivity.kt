@@ -37,9 +37,11 @@ import androidx.core.os.LocaleListCompat
 import androidx.exifinterface.media.ExifInterface
 import com.civicwalk.core.TextTruncate
 import com.google.ai.edge.litertlm.Backend
+import com.google.ai.edge.litertlm.Content
+import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
-import com.google.ai.edge.litertlm.InputData
+import com.google.ai.edge.litertlm.Message
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.checkbox.MaterialCheckBox
@@ -434,6 +436,12 @@ class MainActivity : AppCompatActivity() {
             prefs.edit().putBoolean("map_tips", on).apply()
             if (!on) hideTip()
         }
+        val etHf = findViewById<EditText>(R.id.etHfToken)
+        etHf.setText(prefs.getString("hf_token", "") ?: "")
+        findViewById<MaterialButton>(R.id.btnSaveHf).setOnClickListener {
+            prefs.edit().putString("hf_token", etHf.text.toString().trim()).apply()
+            toast(getString(R.string.hf_saved))
+        }
     }
 
     private fun versionName(): String = try {
@@ -589,10 +597,16 @@ class MainActivity : AppCompatActivity() {
                 conn.connectTimeout = 15_000
                 conn.readTimeout = 30_000
                 conn.instanceFollowRedirects = true
+                conn.setRequestProperty("User-Agent", "WalkNotes/${versionName()}")
+                val tok = prefs.getString("hf_token", "")?.trim().orEmpty()
+                if (tok.isNotEmpty()) conn.setRequestProperty("Authorization", "Bearer $tok")
                 if (already > 0) conn.setRequestProperty("Range", "bytes=$already-")
                 val code = conn.responseCode
+                if (code == 401 || code == 403) throw IllegalStateException(getString(R.string.dl_gated))
+                if (code == 404) throw IllegalStateException(getString(R.string.dl_missing))
+                if (code != 200 && code != 206) throw IllegalStateException(getString(R.string.dl_http, code))
                 val resuming = already > 0 && code == HttpURLConnection.HTTP_PARTIAL
-                if (already > 0 && !resuming) partial.delete()      // server ignored the range
+                if (already > 0 && !resuming) { partial.delete(); already = 0L }
 
                 var total = if (resuming) already else 0L
                 conn.inputStream.use { input ->
@@ -613,20 +627,24 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 }
-                val complete = partial.length() == entry.sizeBytes
+                val got = partial.length()
+                val complete = got == entry.sizeBytes
                 if (complete && !dlStop) {
                     if (modelTarget(entry).exists()) modelTarget(entry).delete()
                     partial.renameTo(modelTarget(entry))
                 }
                 main.post {
                     row?.bar?.visibility = View.GONE
+                    if (!dlStop && !complete) {
+                        partial.delete()
+                        row?.status?.text = getString(R.string.dl_size, got, entry.sizeBytes)
+                    }
                     refreshModelRows()
                 }
             } catch (t: Throwable) {
                 main.post {
                     row?.bar?.visibility = View.GONE
-                    row?.status?.text = "Download failed: ${t.message}"
-                    refreshModelRows()
+                    row?.status?.text = t.message ?: "download"
                 }
             }
         }.also { it.start() }
@@ -691,7 +709,6 @@ class MainActivity : AppCompatActivity() {
                         backend = backend,
                         visionBackend = if (entry.vision) backend else null,
                         audioBackend = backend,
-                        maxNumTokens = 2048,
                         maxNumImages = if (entry.vision) 4 else 0,
                         cacheDir = cacheDir.path
                     )
@@ -754,23 +771,31 @@ class MainActivity : AppCompatActivity() {
      */
     private class Smoke(val textOk: Boolean, val textErr: String, val visionOk: Boolean, val visionErr: String)
 
+    private fun runPrompt(e: Engine, prompt: String, image: ByteArray?): String {
+        e.createConversation().use { c ->
+            val msg = if (image != null)
+                c.sendMessage(Contents.of(Content.Text(prompt), Content.ImageBytes(image)))
+            else
+                c.sendMessage(prompt)
+            return messageText(msg)
+        }
+    }
+
+    private fun messageText(m: Message): String {
+        val texts = m.contents.contents.mapNotNull { (it as? Content.Text)?.text }
+        return texts.joinToString("\n").trim().ifEmpty { m.toString() }
+    }
+
     private fun smokeTest(e: Engine, entry: ModelEntry): Smoke {
         try {
-            e.createSession().use { s ->
-                val r = s.generateContent(listOf(InputData.Text("Reply with OK.")))
-                if (r.isNullOrBlank()) return Smoke(false, "empty reply", false, "")
-            }
+            val r = runPrompt(e, "Reply with OK.", null)
+            if (r.isBlank()) return Smoke(false, "empty reply", false, "")
         } catch (t: Throwable) {
             return Smoke(false, t.message ?: t.javaClass.simpleName, false, "")
         }
         if (!entry.vision) return Smoke(true, "", false, "")
         return try {
-            e.createSession().use { s ->
-                val inputs = ArrayList<InputData>()
-                inputs.add(InputData.Text("One word for the colour."))
-                inputs.add(InputData.Image(probeJpeg()))
-                s.generateContent(inputs)
-            }
+            runPrompt(e, "One word for the colour.", probeJpeg())
             Smoke(true, "", true, "")
         } catch (t: Throwable) {
             Smoke(true, "", false, t.message ?: t.javaClass.simpleName)
@@ -1183,12 +1208,7 @@ class MainActivity : AppCompatActivity() {
             var text = ""
             var error: String? = null
             try {
-                e.createSession().use { s ->
-                    val inputs = ArrayList<InputData>()
-                    inputs.add(InputData.Text(prompt))
-                    if (look && photo != null) inputs.add(InputData.Image(photo.readBytes()))
-                    text = s.generateContent(inputs)
-                }
+                text = runPrompt(e, prompt, if (look && photo != null) photo.readBytes() else null)
             } catch (t: Throwable) {
                 error = t.message ?: "unknown"
             }

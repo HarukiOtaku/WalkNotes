@@ -212,4 +212,13 @@
     <string name="gen_help_text">这款模型看不见相片。在关键词里写看到什么（物件、颜色、材质）。时间地点会自动加上。下面大格是输出，不是输入。</string>
     <string name="note_need_words">这款模型看不见相片。先在上面打几个关键词，或用 Gemma 4 E2B 并打开「看相片」。</string>
     <string name="st_loaded_text_only">已用 %1$s 载入（纯文字）。看图测试失败：%2$s</string>
+    <string name="c_hf">Hugging Face 令牌</string>
+    <string name="hf_token_hint">hf_… Read token（只存在这部手机）</string>
+    <string name="btn_save_hf">保存令牌</string>
+    <string name="hf_token_note">Gemma 4 E2B 不需要 token。Gemma 3 1B／270M 要先在浏览器登录 huggingface.co 同意 Gemma 授权，创建 Read token，贴到这里。不要在聊天里发送 token。</string>
+    <string name="hf_saved">已保存在这部手机。</string>
+    <string name="dl_gated">Hugging Face 拦住了文件（Gemma 授权）。浏览器同意授权，设置里填 Read token，再下载。Gemma 4 E2B 不需要 token。</string>
+    <string name="dl_missing">Hugging Face 找不到这个文件（HTTP 404）。</string>
+    <string name="dl_http">下载失败：HTTP %1$d</string>
+    <string name="dl_size">文件大小不符：收到 %1$d bytes，应为 %2$d。已删除坏文件。</string>
 </resources>
