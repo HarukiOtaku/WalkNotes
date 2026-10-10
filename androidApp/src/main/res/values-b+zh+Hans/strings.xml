@@ -188,4 +188,18 @@
     <string name="rec_gps_ok">GPS 在 %1$d 秒前更新 · 正在记录</string>
     <string name="rec_gps_stale">GPS 已 %1$d 秒无信号 · 计时仍在走</string>
     <string name="notif_live">已记 %1$s · 点回地图</string>
+    <string name="btn_replay">回放</string>
+    <string name="btn_hide_line">收起路线</string>
+    <string name="replay_intro">可以选日、月、年或全部。点一行就在地图回放。导出的影片只有你走过的路，我们不会上传。</string>
+    <string name="unit_day">日</string>
+    <string name="unit_month">月</string>
+    <string name="unit_year">年</string>
+    <string name="unit_all">全部</string>
+    <string name="replay_empty">还没有存下的路线。记录完再停止，之后才能回放。</string>
+    <string name="replay_row">%1$s  ·  %2$.2f 公里  ·  %3$d 段</string>
+    <string name="btn_export_video">导出影片</string>
+    <string name="t_video_wait">正在本机制作影片…</string>
+    <string name="t_video_fail">无法制作影片：%1$s</string>
+    <string name="share_video">WalkNotes 路线</string>
+    <string name="replay_playing">正在回放 %1$s</string>
 </resources>

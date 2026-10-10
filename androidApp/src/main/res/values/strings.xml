@@ -197,4 +197,18 @@
     <string name="rec_gps_ok">GPS updated %1$d s ago · recording is live</string>
     <string name="rec_gps_stale">No GPS for %1$d s · timer still running</string>
     <string name="notif_live">Elapsed %1$s · tap to return to the map</string>
+    <string name="btn_replay">Replay</string>
+    <string name="btn_hide_line">Hide line</string>
+    <string name="replay_intro">Pick a day, month, year, or everything. Tap a row to play it on the map. Video shares only the path you walked — nothing is uploaded by us.</string>
+    <string name="unit_day">Day</string>
+    <string name="unit_month">Month</string>
+    <string name="unit_year">Year</string>
+    <string name="unit_all">All</string>
+    <string name="replay_empty">No saved walks yet. Record a walk, then stop — the path is stored for replay.</string>
+    <string name="replay_row">%1$s  ·  %2$.2f km  ·  %3$d walks</string>
+    <string name="btn_export_video">Video</string>
+    <string name="t_video_wait">Making the video on this phone…</string>
+    <string name="t_video_fail">Could not make a video: %1$s</string>
+    <string name="share_video">WalkNotes path</string>
+    <string name="replay_playing">Playing %1$s</string>
 </resources>

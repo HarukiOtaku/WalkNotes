@@ -50,7 +50,8 @@ class FogMapView @JvmOverloads constructor(
         val w = width.toFloat(); val h = height.toFloat()
         canvas.drawColor(Color.parseColor("#FBFCFB"))
 
-        val pts = route + issues.map { doubleArrayOf(it.lat, it.lon) }
+        val cellPts = cells.map { doubleArrayOf(cellLat(it), cellLon(it)) }
+        val pts = route + issues.map { doubleArrayOf(it.lat, it.lon) } + cellPts
         if (pts.isEmpty() || w < 10 || h < 10) {
             paint.color = Color.parseColor("#98A29B"); paint.textAlign = Paint.Align.CENTER; paint.textSize = 30f
             canvas.drawText("No walk recorded yet", w / 2, h / 2, paint)

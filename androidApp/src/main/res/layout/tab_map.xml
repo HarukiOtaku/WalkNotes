@@ -90,6 +90,30 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:text="@string/map_empty" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnReplay"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:minWidth="48dp"
+                    android:text="@string/btn_replay" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnHideLine"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:minWidth="48dp"
+                    android:text="@string/btn_hide_line"
+                    android:visibility="gone" />
+            </LinearLayout>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -122,7 +146,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="top"
         android:layout_marginStart="12dp"
-        android:layout_marginTop="108dp"
+        android:layout_marginTop="152dp"
         android:layout_marginEnd="12dp"
         android:background="@drawable/legend_chip"
         android:gravity="center_vertical"

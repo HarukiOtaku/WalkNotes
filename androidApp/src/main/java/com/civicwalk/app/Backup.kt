@@ -33,6 +33,12 @@ object Backup {
                 zip.write(cells.readBytes())
                 zip.closeEntry()
             }
+            val tracks = File(filesDir, "tracks.json")
+            if (tracks.isFile) {
+                zip.putNextEntry(ZipEntry("tracks.json"))
+                zip.write(tracks.readBytes())
+                zip.closeEntry()
+            }
             photosDir.listFiles()?.filter { it.isFile && it.name.endsWith(".jpg", true) }?.forEach { f ->
                 zip.putNextEntry(ZipEntry("photos/${f.name}"))
                 f.inputStream().use { it.copyTo(zip) }
@@ -56,6 +62,9 @@ object Backup {
                     name == "records.json" -> recordsText = zip.readBytes().toString(Charsets.UTF_8)
                     name == "cells.json" -> {
                         File(filesDir, "cells.json").outputStream().use { zip.copyTo(it) }
+                    }
+                    name == "tracks.json" -> {
+                        File(filesDir, "tracks.json").outputStream().use { zip.copyTo(it) }
                     }
                     name.startsWith("photos/") && name.endsWith(".jpg", true) -> {
                         val out = File(photosDir, File(name).name)

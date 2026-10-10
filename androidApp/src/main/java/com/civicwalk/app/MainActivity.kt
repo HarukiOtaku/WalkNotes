@@ -155,6 +155,10 @@ class MainActivity : AppCompatActivity() {
     private var displayBitmap: Bitmap? = null
     private var blurMode = false
     private val routePoints = ArrayList<DoubleArray>()
+    private var showLiveLine = false
+    private var replayAll: List<DoubleArray>? = null
+    private var replayIdx = 0
+    private var sessionStart = 0L
     private var exifTime: String? = null
     private var exifLoc: DoubleArray? = null
     private var gpsLoc: DoubleArray? = null
@@ -185,6 +189,7 @@ class MainActivity : AppCompatActivity() {
     private var mapRef: MapLibreMap? = null
 
     private val main = Handler(Looper.getMainLooper())
+    private val replayTick = Runnable { advanceReplay() }
     private val prefs by lazy { getSharedPreferences("walknotes", MODE_PRIVATE) }
 
     private val REQ_CAMERA = 1001
@@ -250,6 +255,8 @@ class MainActivity : AppCompatActivity() {
         recClock = findViewById(R.id.recClock)
         recPulse = findViewById(R.id.recPulse)
         recClock.setOnChronometerTickListener { updateRecPulse() }
+        findViewById<MaterialButton>(R.id.btnReplay).setOnClickListener { showReplayDialog() }
+        findViewById<MaterialButton>(R.id.btnHideLine).setOnClickListener { hideRouteLine() }
 
         tvRecords = findViewById(R.id.tvRecords)
         recordsList = findViewById(R.id.recordsList)
@@ -785,8 +792,11 @@ class MainActivity : AppCompatActivity() {
         File(filesDir, "cells.json").delete()
         File(filesDir, "photos").deleteRecursively()
         File(cacheDir, "photos").deleteRecursively()
+        File(filesDir, "tracks.json").delete()
         cells.clear()
         routePoints.clear()
+        showLiveLine = false
+        stopReplay()
         distanceKm = 0.0
         lastPoint = null
         photoFile = null
@@ -1258,12 +1268,20 @@ class MainActivity : AppCompatActivity() {
         recording = !recording
 
         if (!recording) {
+            saveCurrentTrack()
             stopWalkTracking()
             paintWalkButton()
             tvStatus.text = getString(R.string.st_route_stop)
+            findViewById<MaterialButton>(R.id.btnHideLine).visibility = if (showLiveLine) View.VISIBLE else View.GONE
             return
         }
 
+        stopReplay()
+        if (routePoints.size > 1) saveCurrentTrack()
+        routePoints.clear()
+        sessionStart = System.currentTimeMillis()
+        showLiveLine = true
+        findViewById<MaterialButton>(R.id.btnHideLine).visibility = View.VISIBLE
         paintWalkButton()
         if (prefs.getBoolean("walk_notif", true)) startWalkForeground() else startWalkInApp()
         renderRoute()
@@ -1337,7 +1355,7 @@ class MainActivity : AppCompatActivity() {
         val k = cellKey(loc.latitude, loc.longitude)
         cells.add(k)
         saveCells()
-        routePoints.add(doubleArrayOf(loc.latitude, loc.longitude))
+        routePoints.add(doubleArrayOf(loc.latitude, loc.longitude, System.currentTimeMillis().toDouble()))
         lastPoint?.let { p ->
             distanceKm += haversine(p, doubleArrayOf(loc.latitude, loc.longitude)) / 1000.0
         }
@@ -1374,8 +1392,14 @@ class MainActivity : AppCompatActivity() {
     } catch (_: Throwable) { emptyList() }
 
     private fun renderFog() {
-        fogMap.update(cells, routePoints, issueMarks())
+        fogMap.update(cells, visibleRoute(), issueMarks())
         pushMapData()
+    }
+
+    private fun visibleRoute(): List<DoubleArray> {
+        val replay = replayAll
+        if (replay != null) return replay.take(replayIdx.coerceAtLeast(0).coerceAtMost(replay.size))
+        return if (showLiveLine) routePoints else emptyList()
     }
 
     private fun cellKey(lat: Double, lon: Double): String =
@@ -1536,9 +1560,10 @@ class MainActivity : AppCompatActivity() {
                     )
                 )
             }.toTypedArray()
-            val routeFeature = if (routePoints.size > 1) arrayOf(
+            val shown = visibleRoute()
+            val routeFeature = if (shown.size > 1) arrayOf(
                 Feature.fromGeometry(
-                    LineString.fromLngLats(routePoints.map { Point.fromLngLat(it[1], it[0]) })
+                    LineString.fromLngLats(shown.map { Point.fromLngLat(it[1], it[0]) })
                 )
             ) else emptyArray()
             val noteFeatures = issueMarks().map { m ->
@@ -1678,6 +1703,130 @@ class MainActivity : AppCompatActivity() {
     private fun dismissTip() {
         hideTip()
         prefs.edit().putLong("map_tip_last", System.currentTimeMillis()).apply()
+    }
+
+    private fun saveCurrentTrack() {
+        if (routePoints.size < 2) return
+        val end = System.currentTimeMillis()
+        val start = if (sessionStart == 0L) end else sessionStart
+        Tracks.add(filesDir, Track("t-$end", start, end, routePoints.map { it.copyOf() }))
+    }
+
+    private fun hideRouteLine() {
+        showLiveLine = false
+        stopReplay()
+        findViewById<MaterialButton>(R.id.btnHideLine).visibility = View.GONE
+        renderFog()
+    }
+
+    private fun stopReplay() {
+        main.removeCallbacks(replayTick)
+        replayAll = null
+        replayIdx = 0
+    }
+
+    private fun startReplay(label: String, pts: List<DoubleArray>) {
+        if (pts.size < 2) { toast(getString(R.string.replay_empty)); return }
+        showLiveLine = false
+        replayAll = pts
+        replayIdx = 2
+        findViewById<MaterialButton>(R.id.btnHideLine).visibility = View.VISIBLE
+        tvRoute.text = getString(R.string.replay_playing, label)
+        renderFog()
+        main.removeCallbacks(replayTick)
+        main.post(replayTick)
+    }
+
+    private fun advanceReplay() {
+        val all = replayAll ?: return
+        val step = (all.size / 80).coerceAtLeast(1)
+        replayIdx = (replayIdx + step).coerceAtMost(all.size)
+        renderFog()
+        if (replayIdx < all.size) main.postDelayed(replayTick, 40)
+    }
+
+    private fun showReplayDialog() {
+        var unit = "day"
+        val view = layoutInflater.inflate(R.layout.dialog_replay, null)
+        val list = view.findViewById<LinearLayout>(R.id.replayList)
+        val group = view.findViewById<MaterialButtonToggleGroup>(R.id.replayUnit)
+        group.check(R.id.unitDay)
+        fun fill() {
+            list.removeAllViews()
+            val rows = Tracks.grouped(filesDir, unit)
+            if (rows.isEmpty()) {
+                val t = TextView(this)
+                t.setText(R.string.replay_empty)
+                list.addView(t)
+                return
+            }
+            rows.forEach { (key, tracks) ->
+                val km = tracks.sumOf { it.km() }
+                val row = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = android.view.Gravity.CENTER_VERTICAL
+                    setPadding(0, 8, 0, 8)
+                    minimumHeight = 48
+                }
+                val label = TextView(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    text = getString(R.string.replay_row, if (key == "all") getString(R.string.unit_all) else key, km, tracks.size)
+                    setTextColor(ContextCompat.getColor(this@MainActivity, R.color.ink))
+                }
+                val vid = MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+                    text = getString(R.string.btn_export_video)
+                    minHeight = 48
+                    setOnClickListener { exportTrackVideo(Tracks.mergePoints(tracks)) }
+                }
+                row.addView(label)
+                row.addView(vid)
+                row.setOnClickListener { startReplay(if (key == "all") getString(R.string.unit_all) else key, Tracks.mergePoints(tracks)) }
+                list.addView(row)
+            }
+        }
+        group.addOnButtonCheckedListener { _, id, checked ->
+            if (!checked) return@addOnButtonCheckedListener
+            unit = when (id) {
+                R.id.unitMonth -> "month"
+                R.id.unitYear -> "year"
+                R.id.unitAll -> "all"
+                else -> "day"
+            }
+            fill()
+        }
+        fill()
+        AlertDialog.Builder(this)
+            .setTitle(R.string.btn_replay)
+            .setView(view)
+            .setNegativeButton(android.R.string.ok, null)
+            .show()
+    }
+
+    private fun exportTrackVideo(pts: List<DoubleArray>) {
+        if (pts.size < 2) { toast(getString(R.string.replay_empty)); return }
+        toast(getString(R.string.t_video_wait))
+        val out = File(cacheDir, "walknotes-path.mp4")
+        Thread {
+            val err = try { TrackVideo.render(this, cells.toSet(), pts, out) } catch (t: Throwable) { t.message }
+            main.post {
+                if (err != null) {
+                    toast(getString(R.string.t_video_fail, err))
+                    return@post
+                }
+                try {
+                    val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", out)
+                    val send = Intent(Intent.ACTION_SEND).apply {
+                        type = "video/mp4"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        putExtra(Intent.EXTRA_SUBJECT, getString(R.string.share_video))
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    startActivity(Intent.createChooser(send, getString(R.string.share_video)))
+                } catch (t: Throwable) {
+                    toast(getString(R.string.t_video_fail, t.message ?: "share"))
+                }
+            }
+        }.start()
     }
 
     private fun toast(m: String) = Toast.makeText(this, m, Toast.LENGTH_SHORT).show()
