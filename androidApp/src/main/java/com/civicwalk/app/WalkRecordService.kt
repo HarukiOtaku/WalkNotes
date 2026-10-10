@@ -23,6 +23,9 @@ import androidx.core.content.ContextCompat
  */
 class WalkRecordService : Service(), LocationListener {
 
+    private var startedAt = 0L
+    private var lm: LocationManager? = null
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -32,6 +35,7 @@ class WalkRecordService : Service(), LocationListener {
             stopSelf()
             return START_NOT_STICKY
         }
+        startedAt = intent?.getLongExtra(EXTRA_STARTED, System.currentTimeMillis()) ?: System.currentTimeMillis()
         startAsForeground()
         startUpdates()
         return START_STICKY
@@ -69,6 +73,9 @@ class WalkRecordService : Service(), LocationListener {
             .setContentIntent(open)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .setUsesChronometer(true)
+            .setWhen(if (startedAt == 0L) System.currentTimeMillis() else startedAt)
+            .setShowWhen(true)
             .setColor(ContextCompat.getColor(this, R.color.accent))
             .build()
         if (Build.VERSION.SDK_INT >= 34) {
@@ -95,6 +102,7 @@ class WalkRecordService : Service(), LocationListener {
 
     companion object {
         const val ACTION_STOP = "com.civicwalk.app.STOP_WALK"
+        private const val EXTRA_STARTED = "startedAt"
         private const val CHANNEL_ID = "walk"
         private const val NOTIF_ID = 41
 
@@ -102,6 +110,7 @@ class WalkRecordService : Service(), LocationListener {
 
         fun start(ctx: Context) {
             val i = Intent(ctx, WalkRecordService::class.java)
+            i.putExtra(EXTRA_STARTED, System.currentTimeMillis())
             ContextCompat.startForegroundService(ctx, i)
         }
 
@@ -109,6 +118,4 @@ class WalkRecordService : Service(), LocationListener {
             ctx.startService(Intent(ctx, WalkRecordService::class.java).setAction(ACTION_STOP))
         }
     }
-
-    private var lm: LocationManager? = null
 }

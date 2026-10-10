@@ -19,6 +19,8 @@ import android.os.Looper
 import android.provider.MediaStore
 import android.view.MotionEvent
 import android.view.View
+import android.os.SystemClock
+import android.widget.Chronometer
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -109,6 +111,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var kpiKm: TextView
     private lateinit var tvRoute: TextView
     private lateinit var btnRoute: MaterialButton
+    private lateinit var recLive: View
+    private lateinit var recClock: Chronometer
+    private lateinit var recPulse: TextView
 
     // records tab
     private lateinit var tvRecords: TextView
@@ -158,6 +163,7 @@ class MainActivity : AppCompatActivity() {
     private var distanceKm = 0.0
     private var lastPoint: DoubleArray? = null
     private var recording = false
+    private var lastFixAt = 0L
     private var routeListener: LocationListener? = null
 
     @Volatile private var dlStop = false
@@ -240,6 +246,10 @@ class MainActivity : AppCompatActivity() {
         kpiKm = findViewById(R.id.kpiKm)
         tvRoute = findViewById(R.id.tvRoute)
         btnRoute = findViewById(R.id.btnRoute)
+        recLive = findViewById(R.id.recLive)
+        recClock = findViewById(R.id.recClock)
+        recPulse = findViewById(R.id.recPulse)
+        recClock.setOnChronometerTickListener { updateRecPulse() }
 
         tvRecords = findViewById(R.id.tvRecords)
         recordsList = findViewById(R.id.recordsList)
@@ -1264,10 +1274,28 @@ class MainActivity : AppCompatActivity() {
             btnRoute.text = getString(R.string.btn_route_stop)
             btnRoute.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.accent_dark))
             btnRoute.setTextColor(ContextCompat.getColor(this, R.color.white))
+            lastFixAt = 0L
+            recLive.visibility = View.VISIBLE
+            recPulse.text = getString(R.string.rec_wait_gps)
+            recClock.base = SystemClock.elapsedRealtime()
+            recClock.start()
         } else {
             btnRoute.text = getString(R.string.btn_route_start)
             btnRoute.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.accent))
             btnRoute.setTextColor(ContextCompat.getColor(this, R.color.white))
+            recClock.stop()
+            recLive.visibility = View.GONE
+        }
+    }
+
+    private fun updateRecPulse() {
+        if (!recording) return
+        recPulse.text = if (lastFixAt == 0L) {
+            getString(R.string.rec_wait_gps)
+        } else {
+            val ago = ((System.currentTimeMillis() - lastFixAt) / 1000L).toInt()
+            if (ago <= 8) getString(R.string.rec_gps_ok, ago)
+            else getString(R.string.rec_gps_stale, ago)
         }
     }
 
@@ -1315,6 +1343,8 @@ class MainActivity : AppCompatActivity() {
         }
         lastPoint = doubleArrayOf(loc.latitude, loc.longitude)
         gpsLoc = doubleArrayOf(loc.latitude, loc.longitude)
+        lastFixAt = System.currentTimeMillis()
+        updateRecPulse()
         renderRoute()
     }
 

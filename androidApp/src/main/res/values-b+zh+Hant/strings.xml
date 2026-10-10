@@ -184,4 +184,8 @@
         <item>筆記只喺你部機。街圖只係背景。</item>
         <item>迷咗就撳「定位」。霧唔會呃你行過邊。</item>
     </string-array>
+    <string name="rec_wait_gps">等緊 GPS … 計時已開始</string>
+    <string name="rec_gps_ok">GPS 喺 %1$d 秒前更新 · 記錄緊運行</string>
+    <string name="rec_gps_stale">GPS 已 %1$d 秒冇訊號 · 計時仲喺度</string>
+    <string name="notif_live">已記 %1$s · 撳返地圖</string>
 </resources>

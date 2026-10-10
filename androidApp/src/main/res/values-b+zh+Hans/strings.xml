@@ -184,4 +184,8 @@
         <item>笔记只在你的手机。街图只是背景。</item>
         <item>迷路就点「定位」。雾不会骗你走过哪里。</item>
     </string-array>
+    <string name="rec_wait_gps">正在等 GPS … 计时已开始</string>
+    <string name="rec_gps_ok">GPS 在 %1$d 秒前更新 · 正在记录</string>
+    <string name="rec_gps_stale">GPS 已 %1$d 秒无信号 · 计时仍在走</string>
+    <string name="notif_live">已记 %1$s · 点回地图</string>
 </resources>

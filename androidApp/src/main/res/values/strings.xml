@@ -193,4 +193,8 @@
         <item>Your notes stay on this phone. The street tiles are only a backdrop.</item>
         <item>Lost? Recentre. The fog still only shows where you actually walked.</item>
     </string-array>
+    <string name="rec_wait_gps">Waiting for GPS … timer is running</string>
+    <string name="rec_gps_ok">GPS updated %1$d s ago · recording is live</string>
+    <string name="rec_gps_stale">No GPS for %1$d s · timer still running</string>
+    <string name="notif_live">Elapsed %1$s · tap to return to the map</string>
 </resources>
