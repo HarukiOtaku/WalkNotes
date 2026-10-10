@@ -39,6 +39,8 @@ import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.InputData
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.button.MaterialButtonToggleGroup
+import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.google.android.material.tabs.TabLayout
@@ -110,6 +112,11 @@ class MainActivity : AppCompatActivity() {
 
     // records tab
     private lateinit var tvRecords: TextView
+    private lateinit var recordsList: LinearLayout
+    private var recordsFilter = "all"
+
+    private val REQ_EXPORT = 1005
+    private val REQ_IMPORT = 1006
 
     // settings tab
     private lateinit var radioLang: RadioGroup
@@ -232,6 +239,7 @@ class MainActivity : AppCompatActivity() {
         btnRoute = findViewById(R.id.btnRoute)
 
         tvRecords = findViewById(R.id.tvRecords)
+        recordsList = findViewById(R.id.recordsList)
 
         radioLang = findViewById(R.id.radioLang)
         radioBackend = findViewById(R.id.radioBackend)
@@ -282,6 +290,18 @@ class MainActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.btnSave).setOnClickListener { saveNote() }
         findViewById<MaterialButton>(R.id.btnClearRecords).setOnClickListener { confirmClearRecords() }
         findViewById<MaterialButton>(R.id.btnAnalyse).setOnClickListener { generateNote() }
+        val filters = findViewById<MaterialButtonToggleGroup>(R.id.filterRecords)
+        filters.check(R.id.filterAll)
+        filters.addOnButtonCheckedListener { _, id, checked ->
+            if (!checked) return@addOnButtonCheckedListener
+            recordsFilter = when (id) {
+                R.id.filterPhoto -> "photo"
+                R.id.filterNoPhoto -> "nophoto"
+                else -> "all"
+            }
+            renderRecords()
+        }
+        fogMap.onNoteTap = { i -> showNoteAt(i) }
         btnRoute.setOnClickListener { toggleRoute() }
         findViewById<MaterialButton>(R.id.btnRecenter).setOnClickListener { recenter() }
         btnMapReal.setOnClickListener { setMapMode("real") }
@@ -346,6 +366,8 @@ class MainActivity : AppCompatActivity() {
             toast(getString(R.string.st_cancelled))
         }
         findViewById<MaterialButton>(R.id.btnWipe).setOnClickListener { confirmWipe() }
+        findViewById<MaterialButton>(R.id.btnExport).setOnClickListener { startExport() }
+        findViewById<MaterialButton>(R.id.btnImport).setOnClickListener { startImport() }
         tvVersion.text = getString(R.string.app_name) + " " + versionName()
 
         val sw = findViewById<MaterialSwitch>(R.id.switchWalkNotif)
@@ -768,6 +790,24 @@ class MainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode != RESULT_OK) return
+        if (requestCode == REQ_EXPORT) {
+            val uri = data?.data ?: return
+            try {
+                contentResolver.openOutputStream(uri)?.use { Backup.exportZip(filesDir, it) }
+                toast(getString(R.string.export_ok))
+            } catch (t: Throwable) { toast(getString(R.string.t_export_fail, t.message ?: "")) }
+            return
+        }
+        if (requestCode == REQ_IMPORT) {
+            val uri = data?.data ?: return
+            try {
+                val n = contentResolver.openInputStream(uri)?.use { Backup.importZip(filesDir, it) } ?: 0
+                cells.clear(); loadState()
+                renderRecords(); renderFog(); renderRoute()
+                toast(getString(R.string.import_ok, n))
+            } catch (t: Throwable) { toast(getString(R.string.import_fail, t.message ?: "")) }
+            return
+        }
         val f: File? = when (requestCode) {
             REQ_CAMERA -> photoFile
             REQ_PICK -> data?.data?.let { copyToCache(it) }
@@ -1066,7 +1106,8 @@ class MainActivity : AppCompatActivity() {
                 put("place_label", placeLabel())
                 put("lat", p?.get(0) ?: JSONObject.NULL)
                 put("lon", p?.get(1) ?: JSONObject.NULL)
-                put("photo", archiveFile?.absolutePath ?: "")
+                put("photo", if (findViewById<MaterialCheckBox>(R.id.cbSavePhoto).isChecked)
+                    (archiveFile?.absolutePath ?: "") else "")
                 put("note", etNote.text.toString())
                 put("note_language", noteLanguage())
                 put("model", sharedModelLabel)
@@ -1081,23 +1122,58 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderRecords() {
-        tvRecords.text = try {
-            if (!recordsFile().isFile) getString(R.string.empty) else {
-                val arr = JSONArray(recordsFile().readText())
-                if (arr.length() == 0) getString(R.string.empty)
-                else {
-                    val head = getString(R.string.records_n, arr.length())
-                    val body = (0 until arr.length()).joinToString("\n\n") { i ->
-                        val o = arr.getJSONObject(i)
-                        val first = o.optString("note").lineSequence().firstOrNull()?.take(80) ?: ""
-                        "${i + 1}.  [${modeLabel(o.optString("mode"))}]  ${o.optString("time_local")}\n" +
-                            "     ${o.optString("place_label")}\n" +
-                            "     $first"
-                    }
-                    "$head\n\n$body"
-                }
+        recordsList.removeAllViews()
+        try {
+            if (!recordsFile().isFile) {
+                tvRecords.visibility = View.VISIBLE
+                tvRecords.text = getString(R.string.empty)
+                return
             }
-        } catch (t: Throwable) { getString(R.string.empty) }
+            val arr = JSONArray(recordsFile().readText())
+            val shown = ArrayList<Int>()
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                val has = o.optString("photo").isNotEmpty() && File(o.optString("photo")).isFile
+                val ok = when (recordsFilter) {
+                    "photo" -> has
+                    "nophoto" -> !has
+                    else -> true
+                }
+                if (ok) shown.add(i)
+            }
+            if (shown.isEmpty()) {
+                tvRecords.visibility = View.VISIBLE
+                tvRecords.text = getString(R.string.empty)
+                return
+            }
+            tvRecords.visibility = View.GONE
+            val inf = layoutInflater
+            shown.reversed().forEach { i ->
+                val o = arr.getJSONObject(i)
+                val row = inf.inflate(R.layout.item_record, recordsList, false)
+                val img = row.findViewById<ImageView>(R.id.rowPhoto)
+                val path = o.optString("photo")
+                if (path.isNotEmpty() && File(path).isFile) {
+                    img.setImageBitmap(BitmapFactory.decodeFile(path, BitmapFactory.Options().apply {
+                        inSampleSize = 8
+                    }))
+                } else {
+                    img.setImageDrawable(null)
+                    img.setBackgroundColor(ContextCompat.getColor(this, R.color.line))
+                }
+                row.findViewById<TextView>(R.id.rowTitle).text =
+                    "[${modeLabel(o.optString("mode"))}]  ${o.optString("time_local")}"
+                row.findViewById<TextView>(R.id.rowPlace).text = o.optString("place_label")
+                row.findViewById<TextView>(R.id.rowSnippet).text =
+                    o.optString("note").lineSequence().firstOrNull()?.take(80)
+                        ?: getString(R.string.record_no_photo)
+                row.setOnClickListener { showNoteAt(i) }
+                recordsList.addView(row)
+            }
+        } catch (_: Throwable) {
+            tvRecords.visibility = View.VISIBLE
+            tvRecords.text = getString(R.string.empty)
+        }
     }
 
     private fun confirmClearRecords() {
@@ -1213,14 +1289,14 @@ class MainActivity : AppCompatActivity() {
         renderFog()
     }
 
-    private fun issueMarks(): List<Triple<Double, Double, Int>> = try {
-        val out = ArrayList<Triple<Double, Double, Int>>()
+    private fun issueMarks(): List<NotePin> = try {
+        val out = ArrayList<NotePin>()
         if (recordsFile().isFile) {
             val arr = JSONArray(recordsFile().readText())
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
                 if (!o.isNull("lat") && !o.isNull("lon")) {
-                    out.add(Triple(o.getDouble("lat"), o.getDouble("lon"), 0xFF2F7D52.toInt()))
+                    out.add(NotePin(o.getDouble("lat"), o.getDouble("lon"), 0xFF2F7D52.toInt(), i))
                 }
             }
         }
@@ -1282,6 +1358,16 @@ class MainActivity : AppCompatActivity() {
                         buildMapLayers()
                         pushMapData()
                         centerOnLastFix()
+                        map.addOnMapClickListener { latLng ->
+                            val pt = map.projection.toScreenLocation(latLng)
+                            val box = android.graphics.RectF(pt.x - 28, pt.y - 28, pt.x + 28, pt.y + 28)
+                            val hits = map.queryRenderedFeatures(box, "notes-dot")
+                            if (hits.isNotEmpty()) {
+                                val i = hits[0].getNumberProperty("i")?.toInt()
+                                if (i != null) showNoteAt(i)
+                                true
+                            } else false
+                        }
                     }
                 } catch (t: Throwable) { fallbackToGrid() }
             }
@@ -1386,7 +1472,9 @@ class MainActivity : AppCompatActivity() {
                 )
             ) else emptyArray()
             val noteFeatures = issueMarks().map { m ->
-                Feature.fromGeometry(Point.fromLngLat(m.second, m.first))
+                Feature.fromGeometry(Point.fromLngLat(m.lon, m.lat)).also { f ->
+                    f.addNumberProperty("i", m.index)
+                }
             }.toTypedArray()
 
             style.getSourceAs<GeoJsonSource>("fog")?.setGeoJson(fogFeature)
@@ -1489,6 +1577,52 @@ class MainActivity : AppCompatActivity() {
         if (bytes >= 1_000_000) "%.1f MB".format(bytes / 1_000_000.0) else "${bytes / 1024} KB"
 
     private fun toast(m: String) = Toast.makeText(this, m, Toast.LENGTH_SHORT).show()
+
+    private fun startExport() {
+        val name = "WalkNotes-" + SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date()) + ".zip"
+        val i = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/zip"
+            putExtra(Intent.EXTRA_TITLE, name)
+        }
+        startActivityForResult(i, REQ_EXPORT)
+    }
+
+    private fun startImport() {
+        val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/zip"
+        }
+        startActivityForResult(i, REQ_IMPORT)
+    }
+
+    private fun showNoteAt(index: Int) {
+        try {
+            val arr = JSONArray(recordsFile().readText())
+            if (index < 0 || index >= arr.length()) return
+            val o = arr.getJSONObject(index)
+            val view = layoutInflater.inflate(R.layout.dialog_note, null)
+            val img = view.findViewById<ImageView>(R.id.dlgPhoto)
+            val path = o.optString("photo")
+            if (path.isNotEmpty() && File(path).isFile) {
+                img.visibility = View.VISIBLE
+                img.setImageBitmap(BitmapFactory.decodeFile(path))
+                img.setOnClickListener {
+                    img.setScaleType(
+                        if (img.scaleType == ImageView.ScaleType.CENTER_CROP)
+                            ImageView.ScaleType.FIT_CENTER else ImageView.ScaleType.CENTER_CROP
+                    )
+                }
+            } else img.visibility = View.GONE
+            view.findViewById<TextView>(R.id.dlgMeta).text =
+                "[${modeLabel(o.optString("mode"))}]  ${o.optString("time_local")}\n${o.optString("place_label")}"
+            view.findViewById<TextView>(R.id.dlgNote).text = o.optString("note")
+            AlertDialog.Builder(this)
+                .setView(view)
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
+        } catch (_: Throwable) { }
+    }
 
     private fun renderCrash() {
         val c = CivicWalkApp.lastCrash(this)

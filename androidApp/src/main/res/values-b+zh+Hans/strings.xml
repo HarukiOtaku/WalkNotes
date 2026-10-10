@@ -148,4 +148,17 @@
     <string name="c_walk_notif">记录的时候</string>
     <string name="walk_notif">记录步行时显示常驻通知</string>
     <string name="walk_notif_note">默认开。离开 app 也会继续记。关掉之后，只在 WalkNotes 打开时才会记。</string>
+    <string name="c_backup">备份</string>
+    <string name="backup_note">导出笔记、相片和走过的格做成 zip，方便换机。模型文件不含在内（换机再下载）。</string>
+    <string name="btn_export">导出备份</string>
+    <string name="btn_import">导入备份</string>
+    <string name="export_ok">已保存备份。</string>
+    <string name="import_ok">已导入 %1$d 张相片。笔记和走过的格已还原。</string>
+    <string name="import_fail">导入失败：%1$s</string>
+    <string name="cb_save_photo">连相片一起存这笔笔记</string>
+    <string name="filter_all">全部</string>
+    <string name="filter_photo">有相片</string>
+    <string name="filter_nophoto">无相片</string>
+    <string name="record_no_photo">无相片</string>
+    <string name="t_export_fail">导出失败：%1$s</string>
 </resources>

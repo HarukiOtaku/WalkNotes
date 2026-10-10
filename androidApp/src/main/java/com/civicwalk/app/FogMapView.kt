@@ -5,10 +5,14 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
+import android.view.MotionEvent
 import android.view.View
 import kotlin.math.abs
+import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
+
+class NotePin(val lat: Double, val lon: Double, val color: Int, val index: Int)
 
 /**
  * Fog-of-war map, drawn entirely on the device (no tiles, no network).
@@ -23,14 +27,16 @@ class FogMapView @JvmOverloads constructor(
     private val cell = 0.0004                      // ~44 m
     private var cells: Set<String> = emptySet()
     private var route: List<DoubleArray> = emptyList()
-    private var issues: List<Triple<Double, Double, Int>> = emptyList()   // lat, lon, colour
+    private var issues: List<NotePin> = emptyList()
+    var onNoteTap: ((Int) -> Unit)? = null
+    private val hit = ArrayList<Pair<FloatArray, Int>>()
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE; textAlign = Paint.Align.CENTER; textSize = 26f; isFakeBoldText = true
     }
 
-    fun update(newCells: Set<String>, newRoute: List<DoubleArray>, newIssues: List<Triple<Double, Double, Int>>) {
+    fun update(newCells: Set<String>, newRoute: List<DoubleArray>, newIssues: List<NotePin>) {
         cells = newCells.toSet(); route = newRoute.toList(); issues = newIssues.toList()
         invalidate()
     }
@@ -44,7 +50,7 @@ class FogMapView @JvmOverloads constructor(
         val w = width.toFloat(); val h = height.toFloat()
         canvas.drawColor(Color.parseColor("#FBFCFB"))
 
-        val pts = route + issues.map { doubleArrayOf(it.first, it.second) }
+        val pts = route + issues.map { doubleArrayOf(it.lat, it.lon) }
         if (pts.isEmpty() || w < 10 || h < 10) {
             paint.color = Color.parseColor("#98A29B"); paint.textAlign = Paint.Align.CENTER; paint.textSize = 30f
             canvas.drawText("No walk recorded yet", w / 2, h / 2, paint)
@@ -104,16 +110,25 @@ class FogMapView @JvmOverloads constructor(
             paint.style = Paint.Style.FILL
         }
 
-        // issues
-        issues.forEachIndexed { i, it ->
-            paint.color = it.third
-            canvas.drawCircle(X(it.second), Y(it.first), 20f, paint)
+        hit.clear()
+        issues.forEach { pin ->
+            val x = X(pin.lon); val y = Y(pin.lat)
+            paint.color = pin.color
+            canvas.drawCircle(x, y, 20f, paint)
             paint.color = Color.WHITE
-            canvas.drawCircle(X(it.second), Y(it.first), 20f, paint)
-            paint.color = it.third
-            canvas.drawCircle(X(it.second), Y(it.first), 17f, paint)
-            canvas.drawText("${i + 1}", X(it.second), Y(it.first) + 9f, text)
+            canvas.drawCircle(x, y, 20f, paint)
+            paint.color = pin.color
+            canvas.drawCircle(x, y, 17f, paint)
+            canvas.drawText("${pin.index + 1}", x, y + 9f, text)
+            hit.add(floatArrayOf(x, y) to pin.index)
         }
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (event.action != MotionEvent.ACTION_UP) return true
+        val t = hit.minByOrNull { hypot(event.x - it.first[0], event.y - it.first[1]) } ?: return true
+        if (hypot(event.x - t.first[0], event.y - t.first[1]) < 48f) onNoteTap?.invoke(t.second)
+        return true
     }
 
     /** Cells currently revealed — used by the activity for its counter. */

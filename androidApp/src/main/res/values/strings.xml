@@ -157,4 +157,17 @@
     <string name="walk_notif">Show a persistent notification while a walk is recording</string>
     <string name="walk_notif_note">On by default, so recording continues when you leave the app. Turn it off and recording only runs while WalkNotes is open.</string>
     <string name="uninstall_note">Uninstalling the app removes the models too: they live in the app\'s own storage, never in Downloads or any shared folder.</string>
+    <string name="c_backup">Backup</string>
+    <string name="backup_note">Export notes, photos and walked cells as a zip to copy to another phone. Model files are not included (re-download them).</string>
+    <string name="btn_export">Export backup</string>
+    <string name="btn_import">Import backup</string>
+    <string name="export_ok">Backup saved.</string>
+    <string name="import_ok">Imported %1$d photos. Notes and walked cells restored.</string>
+    <string name="import_fail">Could not import: %1$s</string>
+    <string name="cb_save_photo">Save the photo with this note</string>
+    <string name="filter_all">All</string>
+    <string name="filter_photo">With photo</string>
+    <string name="filter_nophoto">No photo</string>
+    <string name="record_no_photo">No photo</string>
+    <string name="t_export_fail">Export failed: %1$s</string>
 </resources>
