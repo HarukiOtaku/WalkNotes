@@ -18,6 +18,8 @@ data class ModelEntry(
     val sizeBytes: Long,
     /** true when the build can take an image as input (the note is then written from the photo). */
     val vision: Boolean,
+    /** true when Hugging Face requires a logged-in licence accept + read token. */
+    val gated: Boolean,
     val noteZh: String,
     val noteEn: String
 ) {
@@ -40,6 +42,7 @@ object ModelCatalog {
             repo = "litert-community/gemma-4-E2B-it-litert-lm",
             sizeBytes = 2_588_147_712L,
             vision = true,
+            gated = false,
             noteZh = "睇相 + 寫字 · 質素最好 · 約 2.6 GB 記憶體",
             noteEn = "Sees the photo and writes · best quality · ~2.6 GB in memory"
         ),
@@ -50,6 +53,7 @@ object ModelCatalog {
             repo = "litert-community/Gemma3-1B-IT",
             sizeBytes = 584_417_280L,
             vision = false,
+            gated = true,
             noteZh = "純文字 · 細啲快啲 · 睇唔到相，只憑你打嘅關鍵詞寫",
             noteEn = "Text only · smaller and faster · cannot see the photo, writes from your keywords"
         ),
@@ -60,6 +64,7 @@ object ModelCatalog {
             repo = "litert-community/gemma-3-270m-it",
             sizeBytes = 304_005_120L,
             vision = false,
+            gated = true,
             noteZh = "極細 · 只適合試機／最舊嘅機 · 質素有限",
             noteEn = "Tiny · for testing or very old phones · limited quality"
         )

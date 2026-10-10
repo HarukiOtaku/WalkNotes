@@ -230,4 +230,8 @@
     <string name="dl_missing">File not found on Hugging Face (HTTP 404).</string>
     <string name="dl_http">Download failed: HTTP %1$d</string>
     <string name="dl_size">Download size mismatch: got %1$d bytes, expected %2$d. Deleted the bad file.</string>
+    <string name="btn_unload">Unload</string>
+    <string name="t_unloaded">Model unloaded. You can load another.</string>
+    <string name="model_help">How to download</string>
+    <string name="model_help_gated">These two Gemma 3 files are locked on Hugging Face.\n\n1. On a computer or this phone\'s browser, open huggingface.co and log in (make an account if you need one).\n2. Open the model page:\n   1B: huggingface.co/litert-community/Gemma3-1B-IT\n   270M: huggingface.co/litert-community/gemma-3-270m-it\n3. At the top, tap Acknowledge licence / agree to Gemma. Do this once per account.\n4. huggingface.co/settings/tokens → create a Read token (starts with hf_).\n5. In WalkNotes → Settings → Hugging Face token, paste it and tap Save. Do not send the token in chat.\n6. Come back here and tap Download.\n\nGemma 4 E2B does not need any of this — it is public.\nThese two cannot see photos. After they load, type keywords above Generate.</string>
 </resources>

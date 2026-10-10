@@ -512,6 +512,14 @@ class MainActivity : AppCompatActivity() {
 
             row.addView(title)
             row.addView(desc)
+            if (entry.gated) {
+                val help = MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+                    text = getString(R.string.model_help)
+                    minHeight = 48
+                    setOnClickListener { showModelHelp() }
+                }
+                row.addView(help)
+            }
             row.addView(status)
             row.addView(bar)
             row.addView(btns)
@@ -520,7 +528,10 @@ class MainActivity : AppCompatActivity() {
             rows[entry.id] = ModelRow(entry, status, bar, primary, load, delete)
 
             primary.setOnClickListener { startDownload(entry) }
-            load.setOnClickListener { loadModel(entry) }
+            load.setOnClickListener {
+                if (sharedEngine != null && sharedModelLabel == entry.label) unloadModel()
+                else loadModel(entry)
+            }
             delete.setOnClickListener { confirmDeleteModel(entry) }
         }
     }
@@ -543,6 +554,10 @@ class MainActivity : AppCompatActivity() {
                     row.status.text = getString(R.string.model_downloaded) + " · " + e.sizeLabel
                     row.primary.visibility = View.GONE
                     row.load.visibility = View.VISIBLE
+                    row.load.text = getString(
+                        if (sharedEngine != null && sharedModelLabel == e.label) R.string.btn_unload
+                        else R.string.btn_load
+                    )
                     row.delete.visibility = View.VISIBLE
                 }
                 partial.isFile && partial.length() > 0 -> {
@@ -657,13 +672,36 @@ class MainActivity : AppCompatActivity() {
         row.status.text = getString(R.string.dl_progress, mb(done), e.sizeLabel, pct)
     }
 
+    private fun unloadModel(silent: Boolean = false) {
+        try { sharedEngine?.close() } catch (_: Throwable) {}
+        sharedEngine = null
+        sharedBackend = ""
+        sharedModelLabel = ""
+        sharedCanSeePhoto = false
+        sharedVisionError = ""
+        renderEngine()
+        refreshModelRows()
+        if (!silent) toast(getString(R.string.t_unloaded))
+    }
+
+    private fun showModelHelp() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.model_help)
+            .setMessage(R.string.model_help_gated)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
     /** Backend preference: "cpu" (default, always works), "auto" (GPU then CPU), "gpu". */
     private fun backendChoice(): String = prefs.getString("backend", "cpu") ?: "cpu"
 
     private fun loadModel(entry: ModelEntry) {
         if (sharedEngine != null) {
-            toast(getString(R.string.st_backend_ok, sharedModelLabel.ifEmpty { "?" }))
-            return
+            if (sharedModelLabel == entry.label) {
+                toast(getString(R.string.st_backend_ok, sharedModelLabel.ifEmpty { "?" }))
+                return
+            }
+            unloadModel(silent = true)
         }
         if (!isInstalled(entry)) { toast(getString(R.string.model_absent)); return }
         if (loadThread?.isAlive == true) return

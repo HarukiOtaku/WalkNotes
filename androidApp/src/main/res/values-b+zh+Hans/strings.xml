@@ -221,4 +221,8 @@
     <string name="dl_missing">Hugging Face 找不到这个文件（HTTP 404）。</string>
     <string name="dl_http">下载失败：HTTP %1$d</string>
     <string name="dl_size">文件大小不符：收到 %1$d bytes，应为 %2$d。已删除坏文件。</string>
+    <string name="btn_unload">取消载入</string>
+    <string name="t_unloaded">已取消载入。可以再载另一款。</string>
+    <string name="model_help">详细说明</string>
+    <string name="model_help_gated">Gemma 3 1B 和 270M 在 Hugging Face 上锁，要先授权才能下载。步骤：\n\n1. 用浏览器打开 huggingface.co，登录（没有账号就注册）。\n2. 打开模型页：\n   1B：huggingface.co/litert-community/Gemma3-1B-IT\n   270M：huggingface.co/litert-community/gemma-3-270m-it\n3. 页顶点 Acknowledge licence／同意 Gemma 授权。每个账号做一次即可。\n4. 到 huggingface.co/settings/tokens，创建一把 Read token（hf_ 开头）。\n5. 回 WalkNotes → 设置 → Hugging Face 令牌，贴上并保存。不要在聊天里发送 token。\n6. 回到这里再点下载。\n\nGemma 4 E2B 不需要这些，公开下载。\n1B／270M 看不见相片；载入后要在「模型会看的内容」打关键词再生成。</string>
 </resources>

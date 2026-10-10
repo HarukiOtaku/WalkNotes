@@ -221,4 +221,8 @@
     <string name="dl_missing">Hugging Face 搵唔到呢個檔（HTTP 404）。</string>
     <string name="dl_http">下載失敗：HTTP %1$d</string>
     <string name="dl_size">檔案大細唔啱：收到 %1$d bytes，應該 %2$d。已刪壞檔。</string>
+    <string name="btn_unload">取消載入</string>
+    <string name="t_unloaded">已取消載入。可以再載另一隻。</string>
+    <string name="model_help">詳細說明</string>
+    <string name="model_help_gated">Gemma 3 1B 同 270M 喺 Hugging Face 上鎖，要授權先下載得。逐步：\n\n1. 用瀏覽器打開 huggingface.co，登入（未有帳號就開一個）。\n2. 打開模型頁：\n   1B：huggingface.co/litert-community/Gemma3-1B-IT\n   270M：huggingface.co/litert-community/gemma-3-270m-it\n3. 頁頂撳 Acknowledge licence／同意 Gemma 授權。每個帳號做一次就得。\n4. 去 huggingface.co/settings/tokens，開一把 Read token（hf_ 開頭）。\n5. 返 WalkNotes → 設定 → Hugging Face 權杖，貼低，撳儲存。唔好喺 Discord 傳 token。\n6. 返呢度再撳下載。\n\nGemma 4 E2B 唔使呢啲，公開下載。\n1B／270M 睇唔到相；載入之後要喺「模型會睇嘅嘢」打關鍵詞先好生成。</string>
 </resources>
