@@ -44,7 +44,7 @@
     <string name="kpi_km">Kilometres</string>
     <string name="btn_route_start">Start recording</string>
     <string name="btn_route_stop">Stop recording</string>
-    <string name="map_legend">Grey = not walked yet · amber edge = one step further · red dot = a reported issue.\nThe grid is drawn on this phone and never uploaded.</string>
+    <string name="map_legend">Grey fog = not walked yet. Walked cells show the street. Green dot = a saved note.\nDrawn on this phone, never uploaded.</string>
     <string name="map_empty">Walk with recording on and the fog lifts, one ~44 m cell at a time.</string>
 
     <string name="btn_recenter">Recentre</string>
@@ -150,5 +150,11 @@
     <string name="btn_wipe">Delete all app data</string>
     <string name="wipe_confirm">Delete every note, photo, walked cell and model file stored by this app?</string>
     <string name="wipe_done">All app data deleted.</string>
+    <string name="notif_channel">Walk recording</string>
+    <string name="notif_title">WalkNotes is recording</string>
+    <string name="notif_body">A walk is in progress. Tap to return to the map.</string>
+    <string name="c_walk_notif">While recording</string>
+    <string name="walk_notif">Show a persistent notification while a walk is recording</string>
+    <string name="walk_notif_note">On by default, so recording continues when you leave the app. Turn it off and recording only runs while WalkNotes is open.</string>
     <string name="uninstall_note">Uninstalling the app removes the models too: they live in the app\'s own storage, never in Downloads or any shared folder.</string>
 </resources>

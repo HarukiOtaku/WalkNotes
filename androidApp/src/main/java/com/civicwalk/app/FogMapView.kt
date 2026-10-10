@@ -13,8 +13,7 @@ import kotlin.math.min
 /**
  * Fog-of-war map, drawn entirely on the device (no tiles, no network).
  *
- * Grey = not walked yet. A ~44 m cell you have been through is punched out of the fog, so the
- * map fills in as you walk. Reported issues are drawn on top as numbered dots.
+ * Grey fog = not walked yet. Walked cells are punched out. Saved notes are green dots.
  * Mirrors the canvas logic of the HTML prototype so the two stay comparable.
  */
 class FogMapView @JvmOverloads constructor(

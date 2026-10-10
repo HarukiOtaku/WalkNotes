@@ -12,6 +12,7 @@ import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -38,6 +39,7 @@ import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.InputData
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.google.android.material.tabs.TabLayout
 import org.json.JSONArray
@@ -179,6 +181,7 @@ class MainActivity : AppCompatActivity() {
 
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        WalkRecordService.sink = { loc -> applyWalkFix(loc) }
 
         bindViews()
         loadState()
@@ -194,7 +197,8 @@ class MainActivity : AppCompatActivity() {
                 Manifest.permission.CAMERA,
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.ACCESS_COARSE_LOCATION
-            ), REQ_PERM
+            ) + if (Build.VERSION.SDK_INT >= 33) arrayOf(Manifest.permission.POST_NOTIFICATIONS) else emptyArray(),
+            REQ_PERM
         )
 
         buildModelRows()
@@ -343,6 +347,18 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<MaterialButton>(R.id.btnWipe).setOnClickListener { confirmWipe() }
         tvVersion.text = getString(R.string.app_name) + " " + versionName()
+
+        val sw = findViewById<MaterialSwitch>(R.id.switchWalkNotif)
+        sw.isChecked = prefs.getBoolean("walk_notif", true)
+        sw.setOnCheckedChangeListener { _, on ->
+            prefs.edit().putBoolean("walk_notif", on).apply()
+            if (recording) {
+                if (on) startWalkForeground() else {
+                    WalkRecordService.stop(this)
+                    startWalkInApp()
+                }
+            }
+        }
     }
 
     private fun versionName(): String = try {
@@ -1116,39 +1132,76 @@ class MainActivity : AppCompatActivity() {
 
     private fun toggleRoute() {
         if (!requireLocationPerm()) { toast(getString(R.string.t_perm)); return }
-        val lm = getSystemService(LOCATION_SERVICE) as LocationManager
         recording = !recording
 
         if (!recording) {
-            routeListener?.let { lm.removeUpdates(it) }
-            routeListener = null
-            btnRoute.text = getString(R.string.btn_route_start)
-            btnRoute.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.amber))
-            btnRoute.setTextColor(ContextCompat.getColor(this, R.color.ink))
+            stopWalkTracking()
+            paintWalkButton()
             tvStatus.text = getString(R.string.st_route_stop)
             return
         }
 
-        btnRoute.text = getString(R.string.btn_route_stop)
-        btnRoute.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.issue))
-        btnRoute.setTextColor(ContextCompat.getColor(this, R.color.white))
+        paintWalkButton()
+        if (prefs.getBoolean("walk_notif", true)) startWalkForeground() else startWalkInApp()
+        renderRoute()
+    }
+
+    private fun paintWalkButton() {
+        if (recording) {
+            btnRoute.text = getString(R.string.btn_route_stop)
+            btnRoute.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.accent_dark))
+            btnRoute.setTextColor(ContextCompat.getColor(this, R.color.white))
+        } else {
+            btnRoute.text = getString(R.string.btn_route_start)
+            btnRoute.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.accent))
+            btnRoute.setTextColor(ContextCompat.getColor(this, R.color.white))
+        }
+    }
+
+    private fun startWalkForeground() {
+        stopInAppUpdates()
+        try {
+            WalkRecordService.start(this)
+        } catch (t: Throwable) {
+            startWalkInApp()
+        }
+    }
+
+    private fun startWalkInApp() {
+        stopInAppUpdates()
+        val lm = getSystemService(LOCATION_SERVICE) as LocationManager
         val listener = object : LocationListener {
-            override fun onLocationChanged(loc: Location) {
-                val k = cellKey(loc.latitude, loc.longitude)
-                cells.add(k)
-                saveCells()
-                routePoints.add(doubleArrayOf(loc.latitude, loc.longitude))
-                lastPoint?.let { p ->
-                    distanceKm += haversine(p, doubleArrayOf(loc.latitude, loc.longitude)) / 1000.0
-                }
-                lastPoint = doubleArrayOf(loc.latitude, loc.longitude)
-                renderRoute()
-            }
+            override fun onLocationChanged(loc: Location) { applyWalkFix(loc) }
             override fun onProviderEnabled(p: String) {}
             override fun onProviderDisabled(p: String) {}
         }
         routeListener = listener
-        lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 3000L, 5f, listener, Looper.getMainLooper())
+        try {
+            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 3000L, 5f, listener, Looper.getMainLooper())
+        } catch (_: SecurityException) { }
+    }
+
+    private fun stopWalkTracking() {
+        WalkRecordService.stop(this)
+        stopInAppUpdates()
+    }
+
+    private fun stopInAppUpdates() {
+        val lm = getSystemService(LOCATION_SERVICE) as LocationManager
+        routeListener?.let { try { lm.removeUpdates(it) } catch (_: Throwable) {} }
+        routeListener = null
+    }
+
+    private fun applyWalkFix(loc: Location) {
+        val k = cellKey(loc.latitude, loc.longitude)
+        cells.add(k)
+        saveCells()
+        routePoints.add(doubleArrayOf(loc.latitude, loc.longitude))
+        lastPoint?.let { p ->
+            distanceKm += haversine(p, doubleArrayOf(loc.latitude, loc.longitude)) / 1000.0
+        }
+        lastPoint = doubleArrayOf(loc.latitude, loc.longitude)
+        gpsLoc = doubleArrayOf(loc.latitude, loc.longitude)
         renderRoute()
     }
 
@@ -1167,7 +1220,7 @@ class MainActivity : AppCompatActivity() {
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
                 if (!o.isNull("lat") && !o.isNull("lon")) {
-                    out.add(Triple(o.getDouble("lat"), o.getDouble("lon"), 0xFFD9534F.toInt()))
+                    out.add(Triple(o.getDouble("lat"), o.getDouble("lon"), 0xFF2F7D52.toInt()))
                 }
             }
         }
@@ -1253,11 +1306,19 @@ class MainActivity : AppCompatActivity() {
     private fun buildMapLayers() {
         val style = mapRef?.style ?: return
         try {
+            style.addSource(GeoJsonSource("fog"))
+            style.addLayer(
+                FillLayer("fog-fill", "fog").withProperties(
+                    PropertyFactory.fillColor(android.graphics.Color.parseColor("#5C6561")),
+                    PropertyFactory.fillOpacity(0.78f),
+                    PropertyFactory.fillAntialias(true)
+                )
+            )
             style.addSource(GeoJsonSource("cells"))
             style.addLayer(
                 FillLayer("cells-fill", "cells").withProperties(
                     PropertyFactory.fillColor(android.graphics.Color.parseColor("#2F7D52")),
-                    PropertyFactory.fillOpacity(0.25f)
+                    PropertyFactory.fillOpacity(0.18f)
                 )
             )
             style.addSource(GeoJsonSource("route"))
@@ -1267,10 +1328,10 @@ class MainActivity : AppCompatActivity() {
                     PropertyFactory.lineWidth(4f)
                 )
             )
-            style.addSource(GeoJsonSource("issues"))
+            style.addSource(GeoJsonSource("notes"))
             style.addLayer(
-                CircleLayer("issues-dot", "issues").withProperties(
-                    PropertyFactory.circleColor(android.graphics.Color.parseColor("#D9534F")),
+                CircleLayer("notes-dot", "notes").withProperties(
+                    PropertyFactory.circleColor(android.graphics.Color.parseColor("#2F7D52")),
                     PropertyFactory.circleRadius(7f),
                     PropertyFactory.circleStrokeColor(android.graphics.Color.WHITE),
                     PropertyFactory.circleStrokeWidth(2f)
@@ -1285,6 +1346,24 @@ class MainActivity : AppCompatActivity() {
         val style = map.style ?: return
         try {
             val half = 0.0004 / 2
+            val outer = listOf(
+                Point.fromLngLat(-180.0, -85.0),
+                Point.fromLngLat(180.0, -85.0),
+                Point.fromLngLat(180.0, 85.0),
+                Point.fromLngLat(-180.0, 85.0),
+                Point.fromLngLat(-180.0, -85.0)
+            )
+            val holes = cells.take(1500).map { k ->
+                val la = cellKeyLat(k); val lo = cellKeyLon(k)
+                listOf(
+                    Point.fromLngLat(lo - half, la - half),
+                    Point.fromLngLat(lo - half, la + half),
+                    Point.fromLngLat(lo + half, la + half),
+                    Point.fromLngLat(lo + half, la - half),
+                    Point.fromLngLat(lo - half, la - half)
+                )
+            }
+            val fogFeature = Feature.fromGeometry(Polygon.fromLngLats(listOf(outer) + holes))
             val cellFeatures = cells.mapNotNull { k ->
                 val la = cellKeyLat(k); val lo = cellKeyLon(k)
                 Feature.fromGeometry(
@@ -1306,13 +1385,14 @@ class MainActivity : AppCompatActivity() {
                     LineString.fromLngLats(routePoints.map { Point.fromLngLat(it[1], it[0]) })
                 )
             ) else emptyArray()
-            val issueFeatures = issueMarks().map { m ->
+            val noteFeatures = issueMarks().map { m ->
                 Feature.fromGeometry(Point.fromLngLat(m.second, m.first))
             }.toTypedArray()
 
+            style.getSourceAs<GeoJsonSource>("fog")?.setGeoJson(fogFeature)
             style.getSourceAs<GeoJsonSource>("cells")?.setGeoJson(FeatureCollection.fromFeatures(cellFeatures))
             style.getSourceAs<GeoJsonSource>("route")?.setGeoJson(FeatureCollection.fromFeatures(routeFeature))
-            style.getSourceAs<GeoJsonSource>("issues")?.setGeoJson(FeatureCollection.fromFeatures(issueFeatures))
+            style.getSourceAs<GeoJsonSource>("notes")?.setGeoJson(FeatureCollection.fromFeatures(noteFeatures))
 
             if (!mapCentered) {
                 val p = currentPoint()
@@ -1370,9 +1450,22 @@ class MainActivity : AppCompatActivity() {
         } catch (t: Throwable) { null }
     }
 
+    private fun paintMapChips() {
+        val real = mapMode == "real"
+        val accent = ContextCompat.getColor(this, R.color.accent)
+        val card = ContextCompat.getColor(this, R.color.card)
+        val ink = ContextCompat.getColor(this, R.color.ink)
+        val on = ContextCompat.getColor(this, R.color.white)
+        btnMapReal.backgroundTintList = ColorStateList.valueOf(if (real) accent else card)
+        btnMapReal.setTextColor(if (real) on else ink)
+        btnMapGrid.backgroundTintList = ColorStateList.valueOf(if (!real) accent else card)
+        btnMapGrid.setTextColor(if (!real) on else ink)
+    }
+
     private fun setMapMode(mode: String) {
         mapMode = mode
         prefs.edit().putString("mapmode", mode).apply()
+        paintMapChips()
         val real = mode == "real"
         mapView?.visibility = if (real) View.VISIBLE else View.GONE
         fogMap.visibility = if (real) View.GONE else View.VISIBLE

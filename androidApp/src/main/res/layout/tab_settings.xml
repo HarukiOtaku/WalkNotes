@@ -76,6 +76,39 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
+    <com.google.android.material.card.MaterialCardView
+        style="@style/Card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/SectionTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/c_walk_notif" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switchWalkNotif"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:minHeight="48dp"
+                android:text="@string/walk_notif" />
+
+            <TextView
+                style="@style/Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/walk_notif_note" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
     <!-- model library -->
     <com.google.android.material.card.MaterialCardView
         style="@style/Card"

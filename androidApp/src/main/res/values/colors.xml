@@ -7,6 +7,7 @@
     <color name="muted">#6B7A70</color>
     <color name="line">#DFE6E1</color>
     <color name="accent">#2F7D52</color>
+    <color name="accent_dark">#1E5A38</color>
     <color name="accent_soft">#DCEFE3</color>
     <color name="amber">#C9A227</color>
     <color name="amber_soft">#F7EFD6</color>

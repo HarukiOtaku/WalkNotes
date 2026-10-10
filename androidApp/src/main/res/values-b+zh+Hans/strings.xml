@@ -41,7 +41,7 @@
     <string name="kpi_km">公里</string>
     <string name="btn_route_start">开始记录</string>
     <string name="btn_route_stop">停止记录</string>
-    <string name="map_legend">灰色＝未走过 · 黄边＝再走一步 · 红点＝已记录问题。\n格子在你的手机上自绘，不会上传。</string>
+    <string name="map_legend">灰色雾＝未走过。走过的格才透出街道。绿点＝已写的笔记。\n格子在你的手机上自绘，不会上传。</string>
     <string name="map_empty">开着记录去走，雾就会一格一格散去（每格约 44 米）。</string>
     <string name="btn_recenter">定位</string>
     <string name="toast_no_fix">还没有位置 —— 去「记录」分页按「立即用 GPS 定位」。</string>
@@ -142,4 +142,10 @@
     <string name="wipe_confirm">确定删除 app 储存的全部笔记、相片、走过的格子和模型文件？</string>
     <string name="wipe_done">已删除全部 app 资料。</string>
     <string name="uninstall_note">卸载 app 会连模型一起删除：模型只存在 app 自己的空间，不会放在「下载」或任何共用文件夹。</string>
+    <string name="notif_channel">步行记录</string>
+    <string name="notif_title">WalkNotes 正在记录</string>
+    <string name="notif_body">正在记录步行。点这里返回地图。</string>
+    <string name="c_walk_notif">记录的时候</string>
+    <string name="walk_notif">记录步行时显示常驻通知</string>
+    <string name="walk_notif_note">默认开。离开 app 也会继续记。关掉之后，只在 WalkNotes 打开时才会记。</string>
 </resources>
