@@ -56,10 +56,11 @@
     <string name="c_settings">设置</string>
     <string name="c_lang">语言</string>
     <string name="lang_system">跟随装置</string>
-    <string name="lang_tc">繁體中文</string>
+    <string name="lang_tc">繁体中文</string>
+    <string name="lang_yue">粤语</string>
     <string name="lang_sc">简体中文</string>
     <string name="lang_en">English</string>
-    <string name="lang_note">改语言也会改变要求模型用哪种语言写草稿。</string>
+    <string name="lang_note">英文和简体中文会改变模型草稿语言。粤语与繁体中文都要求模型使用书面繁体。</string>
 
     <string name="c_model">本机模型</string>
     <string name="model_missing">未下载。</string>

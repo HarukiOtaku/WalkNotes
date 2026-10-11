@@ -50,6 +50,12 @@
                     android:text="@string/lang_system" />
 
                 <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/rbYue"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/lang_yue" />
+
+                <com.google.android.material.radiobutton.MaterialRadioButton
                     android:id="@+id/rbHant"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

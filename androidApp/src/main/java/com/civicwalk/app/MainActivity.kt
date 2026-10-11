@@ -377,12 +377,15 @@ class MainActivity : AppCompatActivity() {
         when {
             current.isEmpty -> radioLang.check(R.id.rbSystem)
             current.toLanguageTags().startsWith("zh-Hans") -> radioLang.check(R.id.rbHans)
-            current.toLanguageTags().startsWith("zh") -> radioLang.check(R.id.rbHant)
+            current.toLanguageTags().startsWith("zh-Hant-HK") ||
+                current.toLanguageTags() == "zh-Hant-HK" -> radioLang.check(R.id.rbYue)
+            current.toLanguageTags().startsWith("zh-Hant") -> radioLang.check(R.id.rbHant)
             else -> radioLang.check(R.id.rbEn)
         }
         radioLang.setOnCheckedChangeListener { _, checkedId ->
             val tag = when (checkedId) {
-                R.id.rbHant -> "zh-Hant-HK"
+                R.id.rbYue -> "zh-Hant-HK"
+                R.id.rbHant -> "zh-Hant-TW"
                 R.id.rbHans -> "zh-Hans-CN"
                 R.id.rbEn -> "en"
                 else -> ""
@@ -1169,6 +1172,8 @@ class MainActivity : AppCompatActivity() {
         val effective = if (tag.isEmpty()) sys else tag
         return when {
             effective.startsWith("zh-Hans") -> "Simplified Chinese"
+            // Cantonese UI still asks for written Traditional Chinese: small on-device
+            // models handle 書面繁體 more reliably than spoken Cantonese.
             effective.startsWith("zh") -> "Traditional Chinese"
             else -> "English"
         }

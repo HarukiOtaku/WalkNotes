@@ -1,5 +1,7 @@
 # WalkNotes
 
+English · [繁體中文](README.zh-Hant.md)
+
 On-device walking notebook for Android. You walk, the fog lifts, you write a short note. An **open-weight Gemma model on the phone** can draft the note from the photo and/or your keywords. After the one-time model download, the walk itself does not need a server.
 
 Hacktoberfest 2026, Week 1.
@@ -14,7 +16,7 @@ Hacktoberfest 2026, Week 1.
 - Record a walk with a live timer and optional persistent notification
 - Notes with optional photo, search, date / photo filters, edit, map pin clusters
 - Replay walks by day / month / year / all, and share an on-device MP4 of a path
-- In-app language: Traditional Chinese / Simplified Chinese / English
+- In-app language: Cantonese / Traditional Chinese / Simplified Chinese / English
 
 ## Repository layout
 ```
