@@ -37,13 +37,8 @@ Gemma Terms of Use apply to the weights. 1B / 270M need a Hugging Face account t
 
 ## Build
 ```bash
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
-export ANDROID_HOME=$HOME/tools/android-sdk
 gradle :core:test
 gradle :androidApp:assembleDebug
 ```
 
-Known-good toolchain: JDK 21, Gradle 9.8.0, AGP 9.x with built-in Kotlin (do **not** apply `org.jetbrains.kotlin.android`), LiteRT-LM 0.18.0. Debug APK is arm64-v8a only.
-
-## Privacy
-Public commits use the GitHub noreply identity only. Do not put a legal name, personal email, or student id in this repository.
+Needs JDK 21 and an Android SDK (`JAVA_HOME` / `ANDROID_HOME` if they are not already on `PATH`). Known-good: Gradle 9.8.0, AGP 9.x with built-in Kotlin (do **not** apply `org.jetbrains.kotlin.android`), LiteRT-LM 0.18.0. Debug APK is arm64-v8a only.
